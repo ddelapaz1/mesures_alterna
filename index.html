@@ -167,7 +167,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 22px 20px 60px; }
 .knob-ptr { position: absolute; left: 50%; top: 50%; width: 22px; height: 100px; margin: -50px 0 0 -11px; transition: transform .35s var(--ease); }
 .knob-ptr::before { content: ""; position: absolute; left: 50%; top: 2px; width: 22px; height: 96px; margin-left: -11px; border-radius: 11px; background: linear-gradient(90deg, #2a3036, #3b434b, #2a3036); }
 .knob-ptr::after { content: ""; position: absolute; left: 50%; top: 6px; width: 4px; height: 22px; margin-left: -2px; border-radius: 2px; background: #f2c04e; }
-.dial-pos { position: absolute; transform: translate(-50%, -50%); border: 0; background: none; color: #c7d0d8; font-family: var(--f-display); font-weight: 700; font-size: 15px; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+.dial-pos { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; border: 0; background: none; color: #c7d0d8; font-family: var(--f-display); font-weight: 700; font-size: 15px; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
 .dial-pos:hover { color: #fff; background: rgba(255,255,255,.07); }
 .dial-pos[aria-pressed="true"] { color: #f2c04e; }
 .dial-pos small { display: block; font-family: var(--f-body); font-weight: 400; font-size: 9.5px; color: #8b97a2; margin-top: -3px; }
@@ -438,14 +438,20 @@ function num(x, sig = 4) {
   return s.replace('-', '−').replace('.', ',');
 }
 const fx = (x, d) => { let s = x.toFixed(d); if (/^-0(\.0+)?$/.test(s)) s = s.slice(1); return s.replace('-', '−').replace('.', ','); };
-function q(x, unit, sig = 4) { const [f, p] = eng(x); return num(x / f, sig) + ' ' + p + unit; }
+/* measured magnitudes (V, A, W, var, VA) always with two decimals; prefix m/µ below 1, k from 10 000 */
+const MEAS = ['V', 'A', 'W', 'var', 'VA'];
+function measPfx(a) { a = Math.abs(a); if (a === 0 || a < 1e-12) return [1, '']; if (a < 1e-3) return [1e-6, 'µ']; if (a < 1) return [1e-3, 'm']; if (a >= 1e4) return [1e3, 'k']; return [1, '']; }
+function q(x, unit, sig) {
+  if (sig === undefined && MEAS.includes(unit)) { const [f, p] = measPfx(x); return fx(Math.abs(x) < 1e-12 ? 0 : x / f, 2) + ' ' + p + unit; }
+  const [f, p] = eng(x); return num(x / f, sig || 4) + ' ' + p + unit;
+}
 function angS(z) { if (mag(z) < 1e-9) return '—'; let a = angDeg(z); if (a <= -179.995) a = 180; return fx(a, 2) + '°'; }
-function polar(z, unit) { return mag(z) < 1e-9 ? '0 ' + unit : q(mag(z), unit) + ' ∠ ' + angS(z); }
+function polar(z, unit) { return mag(z) < 1e-9 ? q(0, unit) : q(mag(z), unit) + ' ∠ ' + angS(z); }
 function binom(z, unit) {
   const m = mag(z);
-  if (m < 1e-9) return '0 ' + unit;
-  const [f, p] = eng(m);
-  const d = Math.max(0, Math.min(6, 3 - Math.floor(Math.log10(m / f))));
+  if (m < 1e-9) return q(0, unit);
+  const [f, p] = MEAS.includes(unit) ? measPfx(m) : eng(m);
+  const d = MEAS.includes(unit) ? 2 : Math.max(0, Math.min(6, 3 - Math.floor(Math.log10(m / f))));
   const re = Math.abs(z.re) < 1e-9 * m ? 0 : z.re / f, im = Math.abs(z.im) < 1e-9 * m ? 0 : z.im / f;
   return fx(re, d) + ' ' + (im < 0 ? '−' : '+') + ' j' + fx(Math.abs(im), d) + ' ' + p + unit;
 }
@@ -749,43 +755,38 @@ function setDisplay(disp, str) {
 let mainDisp, subDisp, ann = {}, unitTxt, subLbl, bars = [];
 function buildLCD() {
   const A = (k, x, y, txt) => { ann[k] = svgEl('text', { class: 'ann', x, y }, lcd); ann[k].textContent = txt; };
-  A('auto', 12, 18, 'AUTO'); A('trms', 52, 18, 'TRMS'); A('ac', 92, 18, 'AC ~'); A('ol', 134, 18, 'OL'); A('pf', 222, 18, 'POWER');
-  mainDisp = buildDisplay(48, 30, 34, 62, 6.5, 4, 14);
-  unitTxt = svgEl('text', { class: 'unit', x: 243, y: 90 }, lcd);
+  A('auto', 12, 18, 'AUTO'); A('trms', 52, 18, 'TRMS'); A('ac', 92, 18, 'AC ~'); A('ol', 134, 18, 'OL'); A('ind', 158, 18, 'IND'); A('cap', 186, 18, 'CAP'); A('pf', 222, 18, 'POWER');
+  mainDisp = buildDisplay(36, 32, 25, 58, 6, 6, 10);
+  unitTxt = svgEl('text', { class: 'unit', x: 252, y: 88 }, lcd);
   subDisp = buildDisplay(206, 108, 12, 22, 3, 4, 6);
   subLbl = svgEl('text', { class: 'ann on', x: 168, y: 126 }, lcd);
   for (let i = 0; i < 30; i++) bars.push(svgEl('rect', { class: 'bar', x: 12 + i * 4.4, y: 112, width: 3, height: 10 }, lcd));
   const sc = svgEl('text', { class: 'scale', x: 12, y: 140 }, lcd); sc.textContent = '0    ·    ·    ·    ·    ·  FS';
 }
-/* 6000-count autoranging, like a real handheld meter */
+/* autoranging with two decimals: m-prefix below 1, k-prefix from 10 000 (six digits on the display) */
 function meterReading(x, base) {
   const a = Math.abs(x);
   if (base === 'A' && a > 10) return { ol: true, unit: 'A' };
   if (base === 'V' && a > 1000) return { ol: true, unit: 'V' };
-  let f = 1, pf = '';
-  if (a < 0.6 && a > 0) { f = 1e-3; pf = 'm'; }
-  else if (a >= 6000) { f = 1e3; pf = 'k'; }
-  if (a === 0 && (base === 'V' || base === 'A')) { f = 1; pf = ''; }
-  const s = a / f;
-  const dec = s < 6 ? 3 : s < 60 ? 2 : s < 600 ? 1 : 0;
-  const full = [6, 60, 600, 6000][3 - dec];
-  let str = s.toFixed(dec);
-  if (parseFloat(str) >= full && dec > 0) str = s.toFixed(dec - 1);
-  return { str: (x < 0 && parseFloat(str) !== 0 ? '-' : '') + str, unit: pf + base, frac: Math.min(1, s / full) };
+  const [f, pf] = measPfx(a), sc = a / f;
+  const str = sc.toFixed(2);
+  const full = Math.pow(10, Math.max(1, Math.ceil(Math.log10(Math.max(sc, 1e-9)))));
+  return { str: (x < 0 && parseFloat(str) !== 0 ? '-' : '') + str, unit: pf + base, frac: Math.min(1, sc / full) };
 }
 
 /* ---------- dial ---------- */
 const FNS = [
-  { k: 'V', lab: 'V~', sm: 'tensió', ang: -64 },
-  { k: 'A', lab: 'A~', sm: 'intensitat', ang: -32 },
-  { k: 'W', lab: 'W', sm: 'activa', ang: 0 },
-  { k: 'var', lab: 'var', sm: 'reactiva', ang: 32 },
-  { k: 'VA', lab: 'VA', sm: 'aparent', ang: 64 }
+  { k: 'V', lab: 'V~', sm: 'tensió', ang: -72 },
+  { k: 'A', lab: 'A~', sm: 'intensitat', ang: -43 },
+  { k: 'W', lab: 'W', sm: 'activa', ang: -14 },
+  { k: 'var', lab: 'var', sm: 'reactiva', ang: 14 },
+  { k: 'VA', lab: 'VA', sm: 'aparent', ang: 43 },
+  { k: 'PF', lab: 'cos φ', sm: 'factor pot.', ang: 72 }
 ];
 function buildDial() {
   const dial = document.getElementById('dial');
   for (const fnc of FNS) {
-    const r = 92, a = fnc.ang * Math.PI / 180;
+    const r = 96, a = fnc.ang * Math.PI / 180;
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'dial-pos'; b.dataset.fn = fnc.k;
     b.style.left = (130 + r * Math.sin(a)) + 'px'; b.style.top = (104 - r * Math.cos(a)) + 'px';
@@ -903,7 +904,7 @@ function renderMeter(m, flash) {
   document.getElementById('jackV').className = 'jack' + (fn !== 'A' ? ' red' : '');
   for (const k in ann) ann[k].classList.remove('on');
   ann.auto.classList.add('on'); ann.trms.classList.add('on'); ann.ac.classList.add('on');
-  let r = null, base = { V: 'V', A: 'A', W: 'W', var: 'var', VA: 'VA' }[fn], subStr = '----', subL = 'Hz', notes = [], warn = false;
+  let r = null, base = { V: 'V', A: 'A', W: 'W', var: 'var', VA: 'VA', PF: 'cos φ' }[fn], subStr = '----', subL = 'Hz', notes = [], warn = false;
   const XY = `<b style="color:var(--red)">${m.X}</b> (vermella) i <b>${m.Y}</b> (COM)`;
   if (m.same) {
     notes.push('Les dues puntes són al mateix punt: no hi ha res a mesurar. Tria dos punts diferents.');
@@ -936,14 +937,24 @@ function renderMeter(m, flash) {
   } else {
     ann.pf.classList.add('on');
     if (m.dip) {
-      const S = m.dip.S, val = fn === 'W' ? S.re : fn === 'var' ? S.im : mag(S);
-      r = meterReading(val, base);
-      const pf = mag(S) > 1e-9 ? S.re / mag(S) : NaN;
-      subL = 'PF'; subStr = isFinite(pf) ? pf.toFixed(3) : '----';
-      notes.push(`<b>Analitzador de potència</b>: puntes de tensió entre ${XY} i pinça al conductor que alimenta <b>${m.dip.label}</b>. A la pantalla petita, el factor de potència (PF = cos φ).`);
+      const S = m.dip.S, pf = mag(S) > 1e-9 ? S.re / mag(S) : NaN;
+      const reactive = mag(S) > 1e-9 && Math.abs(S.im) > 1e-6 * mag(S);
+      if (reactive) ann[S.im > 0 ? 'ind' : 'cap'].classList.add('on');
+      if (fn === 'PF') {
+        r = isFinite(pf) ? { str: pf.toFixed(3), unit: 'cos φ', frac: Math.abs(pf) } : null;
+        const phi = Math.atan2(S.im, S.re) * 180 / Math.PI;
+        subL = 'φ°'; subStr = isFinite(pf) ? phi.toFixed(Math.abs(phi) < 100 ? 2 : 1) : '----';
+        notes.push(`<b>Factor de potència</b> de <b>${m.dip.label}</b> (puntes de tensió entre ${XY} i pinça al conductor que l'alimenta). cos φ = <var>P</var>/<var>S</var>; a la pantalla petita, l'angle φ entre tensió i intensitat.`);
+        notes.push(reactive ? `L'indicador <b>${S.im > 0 ? 'IND' : 'CAP'}</b> diu que el receptor és ${S.im > 0 ? '<b>inductiu</b> (la intensitat va endarrerida)' : '<b>capacitiu</b> (la intensitat va avançada)'}.` : 'Receptor purament resistiu: tensió i intensitat en fase, cos φ = 1.');
+      } else {
+        const val = fn === 'W' ? S.re : fn === 'var' ? S.im : mag(S);
+        r = meterReading(val, base);
+        subL = 'PF'; subStr = isFinite(pf) ? pf.toFixed(3) : '----';
+        notes.push(`<b>Analitzador de potència</b>: puntes de tensió entre ${XY} i pinça al conductor que alimenta <b>${m.dip.label}</b>. A la pantalla petita, el factor de potència (PF = cos φ).`);
+      }
       notes.push('Un multímetre normal no mesura potència: cal un wattímetre, una pinça wattimètrica o un analitzador de xarxes.');
     } else {
-      notes.push(`Els punts ${m.X} i ${m.Y} no són els dos borns d'un mateix receptor. Per mesurar potència tria els borns d'un element, d'una branca o de la font (potència total).`);
+      notes.push(`Els punts ${m.X} i ${m.Y} no són els dos borns d'un mateix receptor. Per mesurar potència o cos φ tria els borns d'un element, d'una branca o de la font (potència total).`);
       warn = true;
     }
   }
@@ -951,7 +962,7 @@ function renderMeter(m, flash) {
   else if (r) setDisplay(mainDisp, r.str);
   else setDisplay(mainDisp, '----');
   unitTxt.textContent = r ? r.unit : base;
-  unitTxt.setAttribute('font-size', (r ? r.unit : base).length > 3 ? 18 : 24);
+  unitTxt.style.fontSize = (r ? r.unit : base).length > 3 ? '15px' : '22px';
   setDisplay(subDisp, subStr);
   subLbl.textContent = subL;
   const lit = r && !r.ol ? Math.round(r.frac * 30) : 0;
@@ -985,7 +996,7 @@ function renderReads(m) {
         <dt>Aparent <var>S</var></dt><dd class="big">${q(mag(S), 'VA')}</dd>
         <dt>cos φ</dt><dd>${isFinite(pf) ? fx(pf, 3) + (mag(S) > 1e-9 ? ' (' + kind + ')' : '') : '—'}</dd>
         <dt><var>S</var> complexa</dt><dd>${binom(S, 'VA')}</dd>
-      </dl>${m.dip.els.length === 0 ? '<div class="mm"><span>Entre dos punts d\'un mateix fil</span><b>V = 0 → P = 0</b></div>' : ''}`);
+      </dl>${isFinite(pf) && mag(S) > 1e-9 ? `<div class="mm"><span>L'analitzador llegeix</span><b>cos φ ${fx(pf, 3)}${kind === 'resistiu' ? '' : kind === 'inductiu' ? ' IND' : ' CAP'}</b></div>` : ''}${m.dip.els.length === 0 ? '<div class="mm"><span>Entre dos punts d\'un mateix fil</span><b>V = 0 → P = 0</b></div>' : ''}`);
   } else card('readP', `<h3>Potència</h3><p class="na">${m.same ? 'Tria dos punts diferents.' : `<b>${m.X} i ${m.Y} no són els borns d'un receptor.</b> Tria els dos borns d'un element, d'una branca o de la font (potència total). Fes servir les connexions ràpides.`}</p>`);
 }
 
