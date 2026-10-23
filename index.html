@@ -129,6 +129,8 @@ main { max-width: 1240px; margin: 0 auto; padding: 22px 20px 60px; }
 #schem .lead.red { stroke: var(--red); } #schem .lead.black { stroke: var(--black); }
 #schem .meter-sym circle { fill: var(--panel); stroke: var(--ink); stroke-width: 2; }
 #schem .meter-sym text { font-family: var(--f-display); font-weight: 800; font-size: 15px; fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+#schem .meter-sym.inline circle { stroke: var(--i); stroke-width: 2.2; }
+#schem .meter-sym.inline text { font-size: 12px; fill: var(--i); }
 #schem .iarrow { fill: var(--i); }
 #schem .ilbl { font-family: var(--f-math); font-style: italic; font-size: 16px; fill: var(--i); }
 .probes { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: end; margin-top: 12px; }
@@ -605,8 +607,9 @@ function measure() {
     if (node[X] === node[Y]) dp = { p: X, q: Y, els: [], cur: null, label: 'un tram de fil', sameNode: true };
     else {
       const cands = T.dipoles.filter(d => d.els.length && ((node[d.p] === node[X] && node[d.q] === node[Y]) || (node[d.p] === node[Y] && node[d.q] === node[X])));
-      // several receptors between the same two nodes are in parallel: take the whole set (the one with most elements)
-      const best = cands.sort((a, b) => b.els.length - a.els.length)[0];
+      // several receptors between the same two nodes: same voltage but different current and power → ambiguous, ask for the exact terminals
+      if (cands.length > 1) m.ambig = cands;
+      const best = cands.length === 1 ? cands[0] : null;
       if (best) dp = { ...best, equiv: node[best.p] === node[X] ? [[X, best.p], [Y, best.q]] : [[X, best.q], [Y, best.p]] };
     }
   }
@@ -616,6 +619,13 @@ function measure() {
     m.dip = { ...dp, Vpq, Iin, S: mul(Vpq, conj(Iin)) };
   }
   return m;
+}
+/* explanation when several receptors hang between the same two nodes */
+function ambigText(m) {
+  const opts = m.ambig.map(d => `<b>${d.p}–${d.q}</b> (${d.label})`);
+  return `<b>Mesura ambigua entre ${m.X} i ${m.Y}.</b> Pels fils ideals, aquests punts estan connectats als mateixos nodes que diversos receptors en paral·lel. ` +
+    `La tensió és la mateixa per a tots, però la intensitat i la potència depenen de la branca on es col·loca l'amperímetre (o la pinça). ` +
+    `Tria els borns exactes del receptor que vols mesurar: ${opts.slice(0, -1).join(', ')} o ${opts[opts.length - 1]}.`;
 }
 /* electrical nodes: groups of points joined only by (ideal) wires */
 function nodesOf(T) {
@@ -715,21 +725,15 @@ function drawOverlay(m) {
   if (st.fn === 'A') {
     if (!m.tram) return;
     for (const t of m.tram.path) { const g = schem.querySelector(`.tram[data-id="${t.a + t.b}"]`); if (g) g.classList.add('hl-i'); }
-    // current arrow X → Y on the tram, near X for elements, centred for wires; inside the source it flows Y → X
-    const src = m.tram.kind === 'S', tt = m.tram.path[0].kind === 'W' ? 0.5 : 0.18;
-    // the arrow goes on the first tram of the path, starting at X
-    const [ax2, ay2] = P[m.tram.a === m.X ? m.tram.b : m.tram.a];
-    const px = x1 + (ax2 - x1) * tt, py = y1 + (ay2 - y1) * tt, a = Math.atan2(ay2 - y1, ax2 - x1) * 180 / Math.PI + (src ? 180 : 0);
-    svgEl('path', { class: 'iarrow', d: 'M8 0 L-7 -7 L-3 0 L-7 7 Z', transform: `translate(${px} ${py}) rotate(${a})` }, ov);
-    svgEl('text', { class: 'ilbl', x: px + nx * 20, y: py + ny * 20 + 5, 'text-anchor': 'middle' }, ov).textContent = 'I';
-    // ammeter symbol on the side opposite to the element's label
-    let sgn = 1;
-    if (m.tram.side === 'right') sgn = nx > 0 ? -1 : 1;
-    if (m.tram.side === 'up') sgn = ny < 0 ? -1 : 1;
-    const sx = (x1 + x2) / 2 + nx * 34 * sgn, sy = (y1 + y2) / 2 + ny * 34 * sgn;
-    const gs = svgEl('g', { class: 'meter-sym' }, ov);
-    svgEl('circle', { cx: sx, cy: sy, r: 15 }, gs); svgEl('text', { x: sx, y: sy }, gs).textContent = 'A';
+    // ammeter drawn in series on the first tram of the path, right after X
+    inlineAmmeter(ov, m.X, m.tram.a === m.X ? m.tram.b : m.tram.a, m.tram.kind === 'S');
     return;
+  }
+  if (st.fn !== 'V' && m.dip && m.dip.cur) {
+    // current coil / clamp in series with the receptor, on the conductor that feeds it
+    const tr = T.trams.find(t => t.a + t.b === m.dip.cur);
+    const g = schem.querySelector(`.tram[data-id="${tr.a + tr.b}"]`); if (g) g.classList.add('hl-i');
+    inlineAmmeter(ov, tr.a, tr.b, false);
   }
   if (st.fn !== 'V' && m.dip) {
     const T2 = TOPOS[st.topo];
@@ -746,6 +750,22 @@ function drawOverlay(m) {
   const gs = svgEl('g', { class: 'meter-sym' }, ov);
   svgEl('circle', { cx: sx, cy: sy, r: 16 }, gs);
   svgEl('text', { x: sx, y: sy }, gs).textContent = st.fn === 'V' ? 'V' : 'W';
+}
+
+/* ammeter symbol inserted in series on the tram from point a towards b, with the current arrow (a → b; reversed inside the source) */
+function inlineAmmeter(ov, a, b, src) {
+  const P = TOPOS[st.topo].points, [xa, ya] = P[a], [xb, yb] = P[b];
+  const d = Math.hypot(xb - xa, yb - ya), ux = (xb - xa) / d, uy = (yb - ya) / d;
+  const ca = 17, sx = xa + ux * ca, sy = ya + uy * ca;
+  // arrow right after the ammeter when the lead is long enough, otherwise on the far lead (never over the element)
+  const tr = TOPOS[st.topo].trams.find(t => (t.a === a && t.b === b) || (t.a === b && t.b === a));
+  const room = tr.kind === 'W' || src ? Infinity : (d - EL_LEN[tr.kind]) / 2;
+  const ad = room >= 56 ? 44 : d - 12;
+  const px = xa + ux * ad, py = ya + uy * ad, ang = Math.atan2(uy, ux) * 180 / Math.PI + (src ? 180 : 0);
+  svgEl('path', { class: 'iarrow', d: 'M8 0 L-7 -7 L-3 0 L-7 7 Z', transform: `translate(${px} ${py}) rotate(${ang})` }, ov);
+  svgEl('text', { class: 'ilbl', x: px - uy * 16, y: py + ux * 16 + 5, 'text-anchor': 'middle' }, ov).textContent = 'I';
+  const gs = svgEl('g', { class: 'meter-sym inline' }, ov);
+  svgEl('circle', { cx: sx, cy: sy, r: 11 }, gs); svgEl('text', { x: sx, y: sy }, gs).textContent = 'A';
 }
 
 /* ---------- LCD (seven segments) ---------- */
@@ -985,7 +1005,7 @@ function renderMeter(m, flash) {
       if (equivText(m)) notes.push(equivText(m));
       notes.push('Un multímetre normal no mesura potència: cal un wattímetre, una pinça wattimètrica o un analitzador de xarxes.');
     } else {
-      notes.push(`Els punts ${m.X} i ${m.Y} no són els dos borns d'un mateix receptor. Per mesurar potència o cos φ tria els borns d'un element, d'una branca o de la font (potència total).`);
+      notes.push(m.ambig ? ambigText(m) : `Els punts ${m.X} i ${m.Y} no són els dos borns d'un mateix receptor. Per mesurar potència o cos φ tria els borns d'un element, d'una branca o de la font (potència total).`);
       warn = true;
     }
   }
@@ -1028,7 +1048,7 @@ function renderReads(m) {
         <dt>cos φ</dt><dd>${isFinite(pf) ? fx(pf, 3) + (mag(S) > 1e-9 ? ' (' + kind + ')' : '') : '—'}</dd>
         <dt><var>S</var> complexa</dt><dd>${binom(S, 'VA')}</dd>
       </dl>${isFinite(pf) && mag(S) > 1e-9 ? `<div class="mm"><span>L'analitzador llegeix</span><b>cos φ ${fx(pf, 3)}${kind === 'resistiu' ? '' : kind === 'inductiu' ? ' IND' : ' CAP'}</b></div>` : ''}${m.dip.els.length === 0 ? `<div class="mm"><span>${m.dip.sameNode ? 'Mateix node (units per fil)' : 'Entre dos punts d\'un mateix fil'}</span><b>V = 0 → P = 0</b></div>` : ''}`);
-  } else card('readP', `<h3>Potència</h3><p class="na">${m.same ? 'Tria dos punts diferents.' : `<b>${m.X} i ${m.Y} no són els borns d'un receptor.</b> Tria els dos borns d'un element, d'una branca o de la font (potència total). Fes servir les connexions ràpides.`}</p>`);
+  } else card('readP', `<h3>Potència</h3><p class="na">${m.same ? 'Tria dos punts diferents.' : `${m.ambig ? ambigText(m) : `<b>${m.X} i ${m.Y} no són els borns d'un receptor.</b> Tria els dos borns d'un element, d'una branca o de la font (potència total). Fes servir les connexions ràpides.`}`}</p>`);
 }
 
 function renderSteps(m) {
