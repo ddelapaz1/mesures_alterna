@@ -557,6 +557,33 @@ function solve() {
   return s;
 }
 
+/* Trams in series between X and Y: a path whose intermediate points join exactly two trams (no branching),
+   so the same current flows through all of it. The path without the source is preferred. */
+function seriesPath(T, X, Y) {
+  const deg = p => T.trams.filter(t => t.a === p || t.b === p).length;
+  const found = [];
+  for (const first of T.trams.filter(t => t.a === X || t.b === X)) {
+    const path = [first]; let cur = first.a === X ? first.b : first.a; const pts = [X, cur];
+    while (cur !== Y && cur !== X && deg(cur) === 2 && path.length < T.trams.length) {
+      const nxt = T.trams.find(t => (t.a === cur || t.b === cur) && t !== path[path.length - 1]);
+      path.push(nxt); cur = nxt.a === cur ? nxt.b : nxt.a; pts.push(cur);
+    }
+    if (cur === Y) { path.pts = pts; found.push(path); }
+  }
+  if (!found.length) return null;
+  // when two branches join X and Y, prefer the one without the source, then the one whose ends are elements, then the shortest
+  const score = pa => [pa.some(t => t.kind === 'S') ? 1 : 0, pa.filter(t => t.kind === 'W').length, pa.length];
+  found.sort((p1, p2) => { const a = score(p1), b = score(p2); return a[0] - b[0] || a[1] - b[1] || a[2] - b[2]; });
+  const path = found[0], tr = path[0];
+  // reference: current from X towards Y through the path; at the source, current leaving it by X towards the load
+  const I = sol.I[tr.a + tr.b], fwd = tr.kind === 'S' ? tr.b === X : tr.a === X;
+  const els = path.filter(t => t.kind !== 'W').map(t => t.kind);
+  const kind = els.includes('S') ? (path.length === 1 ? 'S' : 'via') : els.length === 0 ? 'W' : els.length === 1 ? els[0] : 'chain';
+  const elTram = path.find(t => t.kind !== 'W') || tr;
+  return { ...tr, side: elTram.side, kind, els, path, route: path.pts.join(' → '), I: fwd ? I : neg(I) };
+}
+const chainName = els => 'la branca ' + els.join(' + ') + ' (en sèrie)';
+
 /* what the probes on X (red) and Y (black) can measure */
 function measure() {
   const T = TOPOS[st.topo], X = st.red, Y = st.black;
@@ -564,7 +591,7 @@ function measure() {
   const m = { X, Y, V, same: X === Y };
   const tr = T.trams.find(t => (t.a === X && t.b === Y) || (t.a === Y && t.b === X));
   // reference: current from X towards Y through the tram; at the source, current leaving it by X towards the load
-  if (tr && !m.same) { const I = sol.I[tr.a + tr.b], fwd = tr.kind === 'S' ? tr.b === X : tr.a === X; m.tram = { ...tr, I: fwd ? I : neg(I) }; }
+  if (!m.same) m.tram = seriesPath(T, X, Y);
   const dp = T.dipoles.find(d => (d.p === X && d.q === Y) || (d.p === Y && d.q === X));
   if (dp && !m.same) {
     const Iin = sol.I[dp.cur];                       // current entering the dipole at p
@@ -651,10 +678,12 @@ function drawOverlay(m) {
 
   if (st.fn === 'A') {
     if (!m.tram) return;
-    const g = schem.querySelector(`.tram[data-id="${m.tram.a + m.tram.b}"]`); if (g) g.classList.add('hl-i');
+    for (const t of m.tram.path) { const g = schem.querySelector(`.tram[data-id="${t.a + t.b}"]`); if (g) g.classList.add('hl-i'); }
     // current arrow X → Y on the tram, near X for elements, centred for wires; inside the source it flows Y → X
-    const src = m.tram.kind === 'S', tt = m.tram.kind === 'W' ? 0.5 : 0.18;
-    const px = x1 + (x2 - x1) * tt, py = y1 + (y2 - y1) * tt, a = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI + (src ? 180 : 0);
+    const src = m.tram.kind === 'S', tt = m.tram.path[0].kind === 'W' ? 0.5 : 0.18;
+    // the arrow goes on the first tram of the path, starting at X
+    const [ax2, ay2] = P[m.tram.a === m.X ? m.tram.b : m.tram.a];
+    const px = x1 + (ax2 - x1) * tt, py = y1 + (ay2 - y1) * tt, a = Math.atan2(ay2 - y1, ax2 - x1) * 180 / Math.PI + (src ? 180 : 0);
     svgEl('path', { class: 'iarrow', d: 'M8 0 L-7 -7 L-3 0 L-7 7 Z', transform: `translate(${px} ${py}) rotate(${a})` }, ov);
     svgEl('text', { class: 'ilbl', x: px + nx * 20, y: py + ny * 20 + 5, 'text-anchor': 'middle' }, ov).textContent = 'I';
     // ammeter symbol on the side opposite to the element's label
@@ -891,13 +920,17 @@ function renderMeter(m, flash) {
       subStr = st.f.toFixed(st.f < 100 ? 2 : 1);
       if (m.tram.kind === 'W') notes.push(`<b>Amperímetre</b>: s'obre el fil entre ${m.X} i ${m.Y} i s'hi intercala l'instrument en <b>sèrie</b>, de manera que el corrent entri per la borna A (punta vermella, costat ${m.X}).`);
       else if (m.tram.kind === 'S') notes.push(`<b>Amperímetre</b> en <b>sèrie</b> amb la font: mesura la intensitat total que subministra.`);
-      else {
+      else if (m.tram.kind === 'via') notes.push(`<b>Amperímetre</b> en <b>sèrie</b> en el camí ${m.tram.route}, que passa per la font: tot aquest camí porta la mateixa intensitat.`);
+      else if (m.tram.kind === 'chain') {
+        notes.push(`<b>Amperímetre</b> en <b>sèrie</b> amb ${chainName(m.tram.els)}: per tots els elements en sèrie hi circula la mateixa intensitat, de manera que es pot obrir el circuit en qualsevol punt entre ${m.X} i ${m.Y} i intercalar-hi l'instrument.`);
+        notes.push(`⚠️ <b>Compte!</b> Si posessis les puntes directament a ${m.X} i ${m.Y} (en paral·lel), l'amperímetre curtcircuitaria tota la branca.`);
+      } else {
         notes.push(`<b>Amperímetre</b> en <b>sèrie</b> amb ${elName[m.tram.kind]}: s'obre el circuit en un dels seus borns i s'hi intercala l'instrument.`);
         notes.push(`⚠️ <b>Compte!</b> Si posessis les puntes directament als borns ${m.X} i ${m.Y} (en paral·lel), l'amperímetre curtcircuitaria ${elName[m.tram.kind]}.`);
       }
       if (r.ol) { notes.push('<b>OL</b>: la intensitat supera els 10 A de l\'entrada A. En un instrument real es fondria el fusible de protecció!'); warn = true; }
     } else {
-      notes.push(`Entre ${m.X} i ${m.Y} no hi ha un únic tram de circuit (fil o element) on intercalar l'amperímetre. Per mesurar intensitat tria <b>dos punts consecutius</b> units per un fil o per un sol element.`);
+      notes.push(`Entre ${m.X} i ${m.Y} el corrent es reparteix per diverses branques: no hi ha un únic camí on intercalar l'amperímetre. Per mesurar intensitat tria dos punts units per un fil, un element o una <b>branca d'elements en sèrie</b>.`);
       warn = true;
     }
   } else {
@@ -938,9 +971,9 @@ function renderReads(m) {
   else card('readV', `<h3>Tensió ${vsub(m.X, m.Y)}</h3><p class="sub">Voltímetre en paral·lel entre ${m.X} i ${m.Y}</p>${kvRows(m.V, 'V')}${mmLine(mag(m.V), 'V')}`);
   // current
   if (m.tram) {
-    const where = m.tram.kind === 'W' ? `pel fil entre ${m.X} i ${m.Y}` : m.tram.kind === 'S' ? `de la font: surt pel born ${m.X} cap al circuit i torna per ${m.Y}` : `per ${elName[m.tram.kind]}`;
+    const where = m.tram.kind === 'W' ? `pel fil entre ${m.X} i ${m.Y}` : m.tram.kind === 'S' ? `de la font: surt pel born ${m.X} cap al circuit i torna per ${m.Y}` : m.tram.kind === 'chain' ? `per ${chainName(m.tram.els)}` : m.tram.kind === 'via' ? `pel camí ${m.tram.route} (passa per la font)` : `per ${elName[m.tram.kind]}`;
     card('readI', `<h3>Intensitat ${isub(m.X, m.Y)}</h3><p class="sub">Corrent que circula ${where}</p>${kvRows(m.tram.I, 'A')}${mmLine(mag(m.tram.I), 'A')}`);
-  } else card('readI', `<h3>Intensitat</h3><p class="na">${m.same ? 'Tria dos punts diferents.' : `<b>No es pot mesurar entre ${m.X} i ${m.Y}.</b> L'amperímetre s'ha d'intercalar en sèrie dins d'un tram: tria dos punts consecutius units per un fil o per un sol element.`}</p>`);
+  } else card('readI', `<h3>Intensitat</h3><p class="na">${m.same ? 'Tria dos punts diferents.' : `<b>No es pot mesurar entre ${m.X} i ${m.Y}.</b> Entre aquests punts el corrent es reparteix per diverses branques. L'amperímetre s'ha d'intercalar en sèrie: tria dos punts units per un fil, un element o una branca d'elements en sèrie.`}</p>`);
   // power
   if (m.dip) {
     const S = m.dip.S, pf = mag(S) > 1e-9 ? S.re / mag(S) : NaN;
