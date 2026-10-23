@@ -598,13 +598,41 @@ function measure() {
   const tr = T.trams.find(t => (t.a === X && t.b === Y) || (t.a === Y && t.b === X));
   // reference: current from X towards Y through the tram; at the source, current leaving it by X towards the load
   if (!m.same) m.tram = seriesPath(T, X, Y);
-  const dp = T.dipoles.find(d => (d.p === X && d.q === Y) || (d.p === Y && d.q === X));
+  let dp = T.dipoles.find(d => (d.p === X && d.q === Y) || (d.p === Y && d.q === X));
+  if (!dp && !m.same) {
+    // ideal wires: points joined only by wire are the same node, so look for a receptor between the two nodes
+    const node = nodesOf(T);
+    if (node[X] === node[Y]) dp = { p: X, q: Y, els: [], cur: null, label: 'un tram de fil', sameNode: true };
+    else {
+      const cands = T.dipoles.filter(d => d.els.length && ((node[d.p] === node[X] && node[d.q] === node[Y]) || (node[d.p] === node[Y] && node[d.q] === node[X])));
+      // several receptors between the same two nodes are in parallel: take the whole set (the one with most elements)
+      const best = cands.sort((a, b) => b.els.length - a.els.length)[0];
+      if (best) dp = { ...best, equiv: node[best.p] === node[X] ? [[X, best.p], [Y, best.q]] : [[X, best.q], [Y, best.p]] };
+    }
+  }
   if (dp && !m.same) {
-    const Iin = sol.I[dp.cur];                       // current entering the dipole at p
+    const Iin = dp.cur ? sol.I[dp.cur] : ZERO;       // current entering the dipole at p
     const Vpq = sub(sol.pot[dp.p], sol.pot[dp.q]);
     m.dip = { ...dp, Vpq, Iin, S: mul(Vpq, conj(Iin)) };
   }
   return m;
+}
+/* electrical nodes: groups of points joined only by (ideal) wires */
+function nodesOf(T) {
+  const node = {};
+  for (const k in T.points) node[k] = k;
+  const find = k => node[k] === k ? k : (node[k] = find(node[k]));
+  for (const t of T.trams) if (t.kind === 'W') node[find(t.a)] = find(t.b);
+  for (const k in T.points) node[k] = find(k);
+  return node;
+}
+/* text: which probed points are the same node as the receptor's terminals */
+function equivText(m) {
+  const pairs = (m.dip.equiv || []).filter(([a, b]) => a !== b);
+  if (m.dip.sameNode) return `${m.X} i ${m.Y} estan units només per fils ideals: elèctricament són <b>el mateix node</b>, la tensió entre ells és 0 V i la potència també.`;
+  if (!pairs.length) return '';
+  return pairs.map(([a, b]) => `${a} i ${b}`).join(', ') + ' estan units' +
+    ` per fils ideals: elèctricament són ${pairs.length > 1 ? 'els mateixos nodes' : 'el mateix node'}. Per tant, mesurar entre ${m.X} i ${m.Y} és el mateix que mesurar entre ${m.dip.p} i ${m.dip.q}.`;
 }
 
 /* ---------- schematic drawing ---------- */
@@ -680,7 +708,9 @@ function drawOverlay(m) {
   const cxm = 320, cym = 180;
   const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
   let nx = -(y2 - y1), ny = x2 - x1; const nl = Math.hypot(nx, ny); nx /= nl; ny /= nl;
-  if (nx * (mx - cxm) + ny * (my - cym) < 0) { nx = -nx; ny = -ny; }
+  // points on the same wire/side: symbol outside the circuit; diagonal pairs: symbol towards the inside, away from labels
+  const diagonal = Math.abs(x2 - x1) > 1 && Math.abs(y2 - y1) > 1;
+  if ((nx * (mx - cxm) + ny * (my - cym) < 0) !== diagonal) { nx = -nx; ny = -ny; }
 
   if (st.fn === 'A') {
     if (!m.tram) return;
@@ -952,6 +982,7 @@ function renderMeter(m, flash) {
         subL = 'PF'; subStr = isFinite(pf) ? pf.toFixed(3) : '----';
         notes.push(`<b>Analitzador de potència</b>: puntes de tensió entre ${XY} i pinça al conductor que alimenta <b>${m.dip.label}</b>. A la pantalla petita, el factor de potència (PF = cos φ).`);
       }
+      if (equivText(m)) notes.push(equivText(m));
       notes.push('Un multímetre normal no mesura potència: cal un wattímetre, una pinça wattimètrica o un analitzador de xarxes.');
     } else {
       notes.push(`Els punts ${m.X} i ${m.Y} no són els dos borns d'un mateix receptor. Per mesurar potència o cos φ tria els borns d'un element, d'una branca o de la font (potència total).`);
@@ -989,14 +1020,14 @@ function renderReads(m) {
   if (m.dip) {
     const S = m.dip.S, pf = mag(S) > 1e-9 ? S.re / mag(S) : NaN;
     const kind = Math.abs(S.im) < 1e-9 * Math.max(1, mag(S)) ? 'resistiu' : S.im > 0 ? 'inductiu' : 'capacitiu';
-    card('readP', `<h3>Potència de ${m.dip.label}</h3><p class="sub">Receptor connectat entre ${m.dip.p} i ${m.dip.q}</p>
+    card('readP', `<h3>Potència de ${m.dip.label}</h3><p class="sub">${m.dip.sameNode ? `${m.X} i ${m.Y} són el mateix node` : `Receptor connectat entre ${m.dip.p} i ${m.dip.q}`}</p>${m.dip.equiv && equivText(m) ? `<p class="na" style="margin-bottom:10px">${equivText(m)}</p>` : ''}
       <dl class="kv">
         <dt>Activa <var>P</var></dt><dd class="big">${q(S.re, 'W')}</dd>
         <dt>Reactiva <var>Q</var></dt><dd class="big">${q(S.im, 'var')}</dd>
         <dt>Aparent <var>S</var></dt><dd class="big">${q(mag(S), 'VA')}</dd>
         <dt>cos φ</dt><dd>${isFinite(pf) ? fx(pf, 3) + (mag(S) > 1e-9 ? ' (' + kind + ')' : '') : '—'}</dd>
         <dt><var>S</var> complexa</dt><dd>${binom(S, 'VA')}</dd>
-      </dl>${isFinite(pf) && mag(S) > 1e-9 ? `<div class="mm"><span>L'analitzador llegeix</span><b>cos φ ${fx(pf, 3)}${kind === 'resistiu' ? '' : kind === 'inductiu' ? ' IND' : ' CAP'}</b></div>` : ''}${m.dip.els.length === 0 ? '<div class="mm"><span>Entre dos punts d\'un mateix fil</span><b>V = 0 → P = 0</b></div>' : ''}`);
+      </dl>${isFinite(pf) && mag(S) > 1e-9 ? `<div class="mm"><span>L'analitzador llegeix</span><b>cos φ ${fx(pf, 3)}${kind === 'resistiu' ? '' : kind === 'inductiu' ? ' IND' : ' CAP'}</b></div>` : ''}${m.dip.els.length === 0 ? `<div class="mm"><span>${m.dip.sameNode ? 'Mateix node (units per fil)' : 'Entre dos punts d\'un mateix fil'}</span><b>V = 0 → P = 0</b></div>` : ''}`);
   } else card('readP', `<h3>Potència</h3><p class="na">${m.same ? 'Tria dos punts diferents.' : `<b>${m.X} i ${m.Y} no són els borns d'un receptor.</b> Tria els dos borns d'un element, d'una branca o de la font (potència total). Fes servir les connexions ràpides.`}</p>`);
 }
 
@@ -1047,7 +1078,7 @@ function renderSteps(m) {
       <div class="eq">${vsub(m.X, m.Y)} = <var>V</var><sub>${m.X}</sub> − <var>V</var><sub>${m.Y}</sub> = ${binom(m.V, 'V')} = <b>${polar(m.V, 'V')}</b></div>`;
     if (m.tram) h += `<div class="eq">${isub(m.X, m.Y)} = <b>${polar(m.tram.I, 'A')}</b></div>`;
     if (m.dip) {
-      const sign = m.dip.p === m.X ? '' : ' (agafant el receptor de ' + m.dip.p + ' a ' + m.dip.q + ')';
+      const sign = m.dip.sameNode || (m.dip.equiv ? m.dip.equiv[0][1] : m.X) === m.dip.p ? '' : ' (agafant el receptor de ' + m.dip.p + ' a ' + m.dip.q + ')';
       h += `<p>Potència${sign}: <var>S</var> = <var>V</var>·<var>I</var>*</p>
         <div class="eq"><var>S</var> = (${polar(m.dip.Vpq, 'V')}) · (${polar(conj(m.dip.Iin), 'A')}) = <b>${binom(m.dip.S, 'VA')}</b></div>
         <p>La part real és la potència activa <var>P</var>, la imaginària la reactiva <var>Q</var>, i el mòdul la potència aparent <var>S</var>.</p>`;
