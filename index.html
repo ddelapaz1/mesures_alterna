@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mesures en corrent altern</title>
+<meta name="description" content="Laboratori virtual: mesura tensions, intensitats i potències en circuits RLC sèrie, paral·lel i mixtos amb un multímetre.">
+<meta name="theme-color" content="#f3f6f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e141a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Crect width='22' height='22' rx='5' fill='%23e8a31c'/%3E%3Crect x='4' y='4' width='14' height='8' rx='1.5' fill='%23b9c4a8'/%3E%3Ccircle cx='11' cy='16' r='2.6' fill='%23222'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<script>try { const t = localStorage.getItem('mca-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<style>
+/* Layout: workbench — circuit + controls on the left, the instrument on the right, readings and explanations below. */
+:root {
+  --paper: #f3f6f8; --panel: #ffffff; --ink: #132030; --muted: #566578; --rule: #d5dde5; --soft: #e8eef3;
+  --v: #c06400; --i: #6a3fd2; --r: #d03636; --l: #13843c; --c: #1f5fd6; --p: #0e8478;
+  --red: #d42a2a; --black: #1d232b; --bad: #c42b2b; --ok: #13843c;
+  --wire: #33414f; --pt: #ffffff;
+  --shadow-sm: 0 1px 2px rgba(19,32,48,.05), 0 1px 1px rgba(19,32,48,.03);
+  --shadow-md: 0 1px 2px rgba(19,32,48,.04), 0 6px 18px -6px rgba(19,32,48,.14);
+  --ease: cubic-bezier(.2,.7,.2,1);
+  /* instrument: same look in both themes */
+  --case: #2a2f35; --holster: #e8a31c; --holster-d: #b97d0c; --lcd: #b7c2a4; --lcd-d: #9eab8b; --seg: #1c2318;
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --f-math: "STIX Two Text", "Cambria Math", "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e141a; --panel: #141d25; --ink: #e2eaf0; --muted: #93a3b2; --rule: #26333f; --soft: #1a2530;
+    --v: #f2a93b; --i: #ab8dff; --r: #ff7d7d; --l: #4fd483; --c: #70a9ff; --p: #3cc9b9; --red: #ff6464; --black: #c9d3dc; --bad: #ff7d7d; --ok: #4fd483;
+    --wire: #b4c2cf; --pt: #141d25;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.35); --shadow-md: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px -8px rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e141a; --panel: #141d25; --ink: #e2eaf0; --muted: #93a3b2; --rule: #26333f; --soft: #1a2530;
+  --v: #f2a93b; --i: #ab8dff; --r: #ff7d7d; --l: #4fd483; --c: #70a9ff; --p: #3cc9b9; --red: #ff6464; --black: #c9d3dc; --bad: #ff7d7d; --ok: #4fd483;
+  --wire: #b4c2cf; --pt: #141d25;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.35); --shadow-md: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px -8px rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; -webkit-font-smoothing: antialiased; background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.6; }
+:focus-visible { outline: 2px solid var(--v); outline-offset: 2px; border-radius: 3px; }
+var, .m { font-family: var(--f-math); font-style: italic; font-size: 1.08em; }
+sub { font-size: .7em; }
+.mono { font-family: var(--f-mono); font-size: .92em; }
+button { font: inherit; color: inherit; }
+
+/* top bar */
+.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--rule); }
+.top-in { max-width: 1240px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 14px; height: 52px; }
+.brand { font-family: var(--f-display); font-stretch: 112%; font-weight: 700; font-size: 14px; letter-spacing: .02em; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.top .sp { flex: 1; }
+.top .mod { font-family: var(--f-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+@media (max-width: 640px) { .top .mod { display: none; } .brand { white-space: normal; } }
+.icon-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--rule); background: var(--panel); display: grid; place-items: center; cursor: pointer; }
+.icon-btn:hover { border-color: var(--muted); }
+
+main { max-width: 1240px; margin: 0 auto; padding: 22px 20px 60px; }
+.hero h1 { font-family: var(--f-display); font-stretch: 118%; font-weight: 800; font-size: clamp(28px, 4.4vw, 44px); line-height: 1.05; margin: 6px 0 8px; letter-spacing: -.01em; }
+.hero p { margin: 0 0 22px; color: var(--muted); max-width: 72ch; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--v); }
+
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+@media (max-width: 980px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 14px; box-shadow: var(--shadow-sm); padding: 18px; min-width: 0; }
+.card + .card { margin-top: 16px; }
+.card h2 { font-family: var(--f-display); font-stretch: 110%; font-size: 17px; font-weight: 700; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
+.step-n { width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: var(--paper); font-family: var(--f-mono); font-size: 12px; display: grid; place-items: center; flex: none; }
+.hint { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+
+/* topology selector */
+.topos { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+@media (max-width: 560px) { .topos { grid-template-columns: minmax(0,1fr); } }
+.topo { border: 1.5px solid var(--rule); background: var(--paper); border-radius: 10px; padding: 10px 12px; cursor: pointer; text-align: left; display: flex; gap: 10px; align-items: center; transition: border-color .15s, background .15s; }
+.topo svg { flex: none; width: 54px; height: 36px; }
+.topo b { display: block; font-size: 14px; line-height: 1.2; }
+.topo span { font-size: 12.5px; color: var(--muted); line-height: 1.3; display: block; }
+.topo:hover { border-color: var(--muted); }
+.topo[aria-pressed="true"] { border-color: var(--v); background: color-mix(in srgb, var(--v) 9%, var(--panel)); }
+
+/* inputs */
+.vals { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; }
+@media (max-width: 760px) { .vals { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+.fld label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 3px; }
+.fld .in { display: flex; align-items: stretch; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); overflow: hidden; }
+.fld .in:focus-within { border-color: var(--v); }
+.fld input { width: 100%; min-width: 0; border: 0; background: transparent; padding: 7px 8px; font-family: var(--f-mono); font-size: 15px; color: var(--ink); outline: none; }
+.fld .u { padding: 7px 8px 7px 0; font-family: var(--f-mono); font-size: 13px; color: var(--muted); white-space: nowrap; align-self: center; }
+.fld.bad .in { border-color: var(--bad); }
+.fld small { display: block; font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); margin-top: 3px; min-height: 1.4em; }
+.fld[data-el="R"] label b { color: var(--r); } .fld[data-el="L"] label b { color: var(--l); } .fld[data-el="C"] label b { color: var(--c); }
+.row-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.btn { border: 1px solid var(--rule); background: var(--paper); border-radius: 8px; padding: 7px 12px; cursor: pointer; font-size: 14px; font-weight: 500; display: inline-flex; gap: 6px; align-items: center; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn.primary:hover { opacity: .9; }
+.chip { border: 1px solid var(--rule); background: var(--paper); border-radius: 999px; padding: 4px 11px; cursor: pointer; font-size: 13px; }
+.chip:hover { border-color: var(--muted); }
+.chip.on { border-color: var(--v); background: color-mix(in srgb, var(--v) 10%, var(--panel)); }
+
+/* schematic */
+.schem-wrap { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; }
+#schem { display: block; width: 100%; height: auto; touch-action: manipulation; }
+#schem .w { stroke: var(--wire); stroke-width: 2.2; fill: none; stroke-linecap: round; }
+#schem .sym { fill: none; stroke-width: 2.4; stroke-linejoin: round; }
+#schem .sym-R { stroke: var(--r); } #schem .sym-L { stroke: var(--l); } #schem .sym-C { stroke: var(--c); } #schem .sym-S { stroke: var(--v); }
+#schem .lbl { font-family: var(--f-math); font-style: italic; font-size: 19px; fill: var(--ink); }
+#schem .val { font-family: var(--f-mono); font-size: 12.5px; fill: var(--muted); }
+#schem .tram-hl { stroke-width: 12; stroke-linecap: round; fill: none; opacity: 0; transition: opacity .2s; }
+#schem .tram.hl-i .tram-hl { stroke: var(--i); opacity: .22; }
+#schem .tram.hl-p .tram-hl { stroke: var(--p); opacity: .22; }
+#schem .pt { cursor: pointer; }
+#schem .pt .dot { fill: var(--pt); stroke: var(--wire); stroke-width: 2; transition: r .15s; }
+#schem .pt .hit { fill: transparent; }
+#schem .pt text { font-family: var(--f-display); font-weight: 700; font-size: 15px; fill: var(--ink); pointer-events: none; }
+#schem .pt:hover .dot { r: 9; }
+#schem .pt.red .dot { fill: var(--red); stroke: var(--red); r: 9; }
+#schem .pt.black .dot { fill: var(--black); stroke: var(--black); r: 9; }
+#schem .lead { stroke-width: 2.6; fill: none; stroke-dasharray: 7 5; stroke-linecap: round; }
+#schem .lead.red { stroke: var(--red); } #schem .lead.black { stroke: var(--black); }
+#schem .meter-sym circle { fill: var(--panel); stroke: var(--ink); stroke-width: 2; }
+#schem .meter-sym text { font-family: var(--f-display); font-weight: 800; font-size: 15px; fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+#schem .iarrow { fill: var(--i); }
+#schem .ilbl { font-family: var(--f-math); font-style: italic; font-size: 16px; fill: var(--i); }
+.probes { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: end; margin-top: 12px; }
+.probes label { font-size: 12.5px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; }
+.probes label select { flex-basis: 100%; }
+.probes .pl { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.probes select { width: 100%; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); font-family: var(--f-mono); font-size: 14px; }
+.pdot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.pdot.red { background: var(--red); } .pdot.black { background: var(--black); }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; align-items: center; }
+.presets > span { font-size: 12.5px; color: var(--muted); margin-right: 2px; }
+.next-hint { font-size: 13px; color: var(--muted); margin: 8px 2px 0; }
+
+/* ===== instrument ===== */
+.meter-col { position: sticky; top: 68px; }
+@media (max-width: 980px) { .meter-col { position: static; } }
+.meter { background: var(--holster); border-radius: 34px; padding: 14px; box-shadow: var(--shadow-md), inset 0 -6px 0 var(--holster-d); max-width: 360px; margin: 0 auto; }
+.meter-body { background: linear-gradient(180deg, #33393f, var(--case)); border-radius: 24px; padding: 16px 16px 18px; color: #dfe5ea; }
+.meter-brand { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--f-display); font-stretch: 115%; font-weight: 800; font-size: 13px; letter-spacing: .08em; color: #f2c04e; margin: 0 4px 10px; }
+.meter-brand span:last-child { font-family: var(--f-mono); font-weight: 500; font-size: 10.5px; color: #9aa6b1; letter-spacing: .04em; }
+.lcd-frame { background: #161a1e; border-radius: 12px; padding: 8px; }
+.lcd { background: linear-gradient(170deg, var(--lcd), var(--lcd-d)); border-radius: 6px; box-shadow: inset 0 2px 6px rgba(0,0,0,.35); }
+#lcd { display: block; width: 100%; height: auto; }
+#lcd .seg { fill: var(--seg); opacity: .07; transition: opacity .08s; }
+#lcd .seg.on { opacity: .92; }
+#lcd .ann { font-family: var(--f-display); font-weight: 700; font-size: 11px; fill: var(--seg); opacity: .08; letter-spacing: .03em; }
+#lcd .ann.on { opacity: .9; }
+#lcd .unit { font-family: var(--f-display); font-weight: 800; font-size: 24px; fill: var(--seg); opacity: .92; }
+#lcd .bar { fill: var(--seg); opacity: .08; }
+#lcd .bar.on { opacity: .85; }
+#lcd .scale { font-family: var(--f-mono); font-size: 8px; fill: var(--seg); opacity: .7; }
+.lcd.flash #lcd .seg.on { animation: settle .35s steps(3); }
+@keyframes settle { 0% { opacity: .35; } 50% { opacity: .7; } 100% { opacity: .92; } }
+.dial-wrap { position: relative; height: 196px; margin: 14px auto 6px; width: 260px; }
+.knob { position: absolute; left: 50%; top: 104px; width: 108px; height: 108px; margin: -54px 0 0 -54px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #4a525a, #1b1f23 70%); box-shadow: 0 4px 10px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12); }
+.knob-ptr { position: absolute; left: 50%; top: 50%; width: 22px; height: 100px; margin: -50px 0 0 -11px; transition: transform .35s var(--ease); }
+.knob-ptr::before { content: ""; position: absolute; left: 50%; top: 2px; width: 22px; height: 96px; margin-left: -11px; border-radius: 11px; background: linear-gradient(90deg, #2a3036, #3b434b, #2a3036); }
+.knob-ptr::after { content: ""; position: absolute; left: 50%; top: 6px; width: 4px; height: 22px; margin-left: -2px; border-radius: 2px; background: #f2c04e; }
+.dial-pos { position: absolute; transform: translate(-50%, -50%); border: 0; background: none; color: #c7d0d8; font-family: var(--f-display); font-weight: 700; font-size: 15px; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+.dial-pos:hover { color: #fff; background: rgba(255,255,255,.07); }
+.dial-pos[aria-pressed="true"] { color: #f2c04e; }
+.dial-pos small { display: block; font-family: var(--f-body); font-weight: 400; font-size: 9.5px; color: #8b97a2; margin-top: -3px; }
+.jacks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; text-align: center; }
+.jack { font-family: var(--f-display); font-weight: 700; font-size: 12px; color: #9aa6b1; }
+.jack i { display: block; width: 34px; height: 34px; margin: 0 auto 4px; border-radius: 50%; background: radial-gradient(circle, #050607 35%, #3a4148 38%, #23282d 60%); border: 3px solid #555e66; transition: border-color .2s, box-shadow .2s; }
+.jack.red i { border-color: #e03b3b; box-shadow: 0 0 10px rgba(224,59,59,.55); }
+.jack.black i { border-color: #0b0d0f; box-shadow: 0 0 0 2px #8995a0; }
+.jack small { display: block; font-weight: 500; font-size: 9px; color: #7c8893; }
+.meter-note { margin-top: 14px; font-size: 14px; background: var(--panel); border: 1px solid var(--rule); border-left: 4px solid var(--v); border-radius: 10px; padding: 10px 12px; }
+.meter-note.warn { border-left-color: var(--bad); }
+.meter-note p { margin: 0; } .meter-note p + p { margin-top: 6px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* readings */
+section.block { margin-top: 28px; }
+section.block > h2 { font-family: var(--f-display); font-stretch: 112%; font-weight: 800; font-size: 22px; margin: 0 0 4px; }
+section.block > .hint { margin-bottom: 14px; }
+.reads { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+@media (max-width: 900px) { .reads { grid-template-columns: minmax(0,1fr); } }
+.read { border-top: 4px solid var(--v); }
+.read.i { border-top-color: var(--i); } .read.p { border-top-color: var(--p); }
+.read h3 { margin: 0 0 2px; font-family: var(--f-display); font-stretch: 108%; font-size: 16px; }
+.read .sub { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 14px; align-items: baseline; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-family: var(--f-mono); font-size: 14.5px; text-align: right; overflow-wrap: anywhere; }
+.kv dd.big { font-size: 17px; font-weight: 600; }
+.read.v .big { color: var(--v); } .read.i .big { color: var(--i); } .read.p .big { color: var(--p); }
+.mm { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--soft); font-size: 13.5px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.mm b { font-family: var(--f-mono); font-size: 15px; }
+.na { color: var(--muted); font-size: 14px; background: var(--soft); border-radius: 8px; padding: 10px 12px; }
+.na b { color: var(--ink); }
+
+.two { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0,1fr); } }
+.steps { counter-reset: st; margin: 0; padding: 0; list-style: none; }
+.steps > li { counter-increment: st; position: relative; padding: 0 0 14px 34px; border-left: 2px solid var(--rule); margin-left: 11px; }
+.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+.steps > li::before { content: counter(st); position: absolute; left: -12px; top: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--panel); border: 2px solid var(--v); font-family: var(--f-mono); font-size: 11px; display: grid; place-items: center; }
+.steps h4 { margin: 0 0 4px; font-size: 15px; }
+.steps p { margin: 0 0 6px; font-size: 14.5px; }
+.eq { font-family: var(--f-mono); font-size: 13.5px; background: var(--soft); border-radius: 6px; padding: 6px 10px; margin: 4px 0; overflow-x: auto; white-space: nowrap; }
+.eq var { font-size: 1.12em; }
+#phasor { display: block; width: 100%; max-width: 380px; margin: 0 auto; height: auto; }
+#phasor .ax { stroke: var(--rule); stroke-width: 1; }
+#phasor .axl { font-family: var(--f-mono); font-size: 9px; fill: var(--muted); }
+#phasor .vl { font-family: var(--f-math); font-style: italic; font-size: 13px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted); justify-content: center; margin-top: 6px; }
+.legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+
+.tbl-wrap { overflow-x: auto; }
+table.sum { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 720px; }
+table.sum th, table.sum td { padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+table.sum th { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+table.sum td { font-family: var(--f-mono); font-size: 13.5px; }
+table.sum th:first-child, table.sum td:first-child { text-align: left; font-family: var(--f-body); }
+table.sum tr.tot td { font-weight: 600; border-top: 2px solid var(--ink); }
+.tagel { display: inline-block; min-width: 22px; text-align: center; font-family: var(--f-math); font-style: italic; font-weight: 600; border-radius: 4px; padding: 0 5px; color: #fff; margin-right: 6px; }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+.badge { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--soft); }
+.badge b { font-family: var(--f-mono); }
+
+.theory { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+@media (max-width: 820px) { .theory { grid-template-columns: minmax(0,1fr); } }
+details.th { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 0 16px; }
+details.th summary { cursor: pointer; padding: 12px 0; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 10px; }
+details.th summary::-webkit-details-marker { display: none; }
+details.th summary::after { content: "+"; font-family: var(--f-mono); color: var(--muted); }
+details.th[open] summary::after { content: "−"; }
+details.th .bd { padding: 0 0 14px; font-size: 14.5px; }
+details.th .bd p { margin: 0 0 8px; }
+details.th ul { margin: 0 0 8px; padding-left: 20px; }
+footer { max-width: 1240px; margin: 0 auto; padding: 20px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--rule); }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true"><rect width="22" height="22" rx="5" fill="#e8a31c"/><rect x="4" y="4" width="14" height="8" rx="1.5" fill="#b7c2a4"/><circle cx="11" cy="16" r="2.6" fill="#222"/></svg>
+      Mesures en corrent altern
+    </div>
+    <div class="sp"></div>
+    <span class="mod">Mòdul 0962 · Sistemes de potència</span>
+    <button class="icon-btn" id="themeBtn" aria-label="Canvia el tema clar/fosc" title="Tema clar/fosc">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="eyebrow">Laboratori virtual</div>
+    <h1>Mesures en corrent altern</h1>
+    <p>Munta un circuit RLC, connecta les puntes del multímetre entre dos punts i observa què llegeix l'instrument. A sota tens el valor complet de cada magnitud (mòdul, fase i forma binòmica) i com s'ha calculat pas a pas.</p>
+  </div>
+
+  <div class="bench">
+    <div>
+      <div class="card">
+        <h2><span class="step-n">1</span>Tria el circuit</h2>
+        <div class="topos" id="topos"></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="step-n">2</span>Valors de la font i dels elements</h2>
+        <p class="hint">Escriu els valors que vulguis o genera'n d'aleatoris (valors típics de taller). La tensió <var>V</var> és el valor <b>eficaç</b> de la font i la prenem com a referència de fase (0°).</p>
+        <div class="vals">
+          <div class="fld" data-k="V"><label for="inV"><b>V</b> font</label><div class="in"><input id="inV" inputmode="decimal" autocomplete="off"><span class="u">V</span></div><small>&nbsp;</small></div>
+          <div class="fld" data-k="f"><label for="inf"><b>f</b> freqüència</label><div class="in"><input id="inf" inputmode="decimal" autocomplete="off"><span class="u">Hz</span></div><small id="infoW">&nbsp;</small></div>
+          <div class="fld" data-k="R" data-el="R"><label for="inR"><b>R</b> resistència</label><div class="in"><input id="inR" inputmode="decimal" autocomplete="off"><span class="u">Ω</span></div><small>&nbsp;</small></div>
+          <div class="fld" data-k="L" data-el="L"><label for="inL"><b>L</b> bobina</label><div class="in"><input id="inL" inputmode="decimal" autocomplete="off"><span class="u">mH</span></div><small id="infoXL">&nbsp;</small></div>
+          <div class="fld" data-k="C" data-el="C"><label for="inC"><b>C</b> condensador</label><div class="in"><input id="inC" inputmode="decimal" autocomplete="off"><span class="u">µF</span></div><small id="infoXC">&nbsp;</small></div>
+        </div>
+        <div class="row-btns">
+          <button class="btn primary" id="rndBtn" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg>
+            Valors aleatoris
+          </button>
+          <button class="btn" id="defBtn" type="button">Valors per defecte</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="step-n">3</span>Connecta les puntes del multímetre</h2>
+        <p class="hint">Fes clic sobre dos punts de l'esquema: el primer clic hi posa la <b style="color:var(--red)">punta vermella</b> i el segon la <b>punta negra (COM)</b>. Després tria la funció amb el selector del multímetre.</p>
+        <div class="schem-wrap"><svg id="schem" viewBox="0 0 640 360" role="img" aria-label="Esquema del circuit"></svg></div>
+        <p class="next-hint" id="nextHint"></p>
+        <div class="probes">
+          <label><span class="pl"><span class="pdot red"></span>Punta vermella <var>X</var></span><select id="selRed" aria-label="Punt de la punta vermella"></select></label>
+          <button class="btn" id="swapBtn" type="button" title="Intercanvia les puntes" aria-label="Intercanvia les puntes">⇄</button>
+          <label><span class="pl"><span class="pdot black"></span>Punta negra COM <var>Y</var></span><select id="selBlack" aria-label="Punt de la punta negra"></select></label>
+        </div>
+        <div class="presets" id="presets"></div>
+      </div>
+    </div>
+
+    <div class="meter-col">
+      <div class="meter" aria-label="Multímetre">
+        <div class="meter-body">
+          <div class="meter-brand"><span>MA-0962</span><span>TRUE RMS · CAT III 600 V</span></div>
+          <div class="lcd-frame"><div class="lcd" id="lcdBox"><svg id="lcd" viewBox="0 0 300 150" aria-hidden="true"></svg></div></div>
+          <p class="sr" aria-live="polite" id="lcdText"></p>
+          <div class="dial-wrap" id="dial">
+            <div class="knob"><div class="knob-ptr" id="knobPtr"></div></div>
+          </div>
+          <div class="jacks">
+            <div class="jack" id="jackA"><i></i>A<small>10 A MAX</small></div>
+            <div class="jack black" id="jackCOM"><i></i>COM<small>&nbsp;</small></div>
+            <div class="jack" id="jackV"><i></i>V<small>600 V MAX</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="meter-note" id="meterNote"></div>
+    </div>
+  </div>
+
+  <section class="block">
+    <h2>Resultats de la mesura</h2>
+    <p class="hint" id="measTitle"></p>
+    <div class="reads">
+      <div class="card read v" id="readV"></div>
+      <div class="card read i" id="readI"></div>
+      <div class="card read p" id="readP"></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Com s'ha calculat</h2>
+    <p class="hint">Resolem el circuit amb fasors (nombres complexos). Tots els valors són <b>eficaços</b> i les fases es mesuren respecte de la tensió de la font.</p>
+    <div class="two">
+      <div class="card"><ol class="steps" id="steps"></ol></div>
+      <div class="card">
+        <h2 style="margin-bottom:4px">Diagrama fasorial</h2>
+        <p class="hint" style="margin-bottom:6px">Tensions i intensitats tenen escales diferents: compara'n els angles, no les longituds.</p>
+        <svg id="phasor" viewBox="-170 -170 340 340" role="img" aria-label="Diagrama fasorial"></svg>
+        <div class="legend" id="phLegend"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Resum de tot el circuit</h2>
+    <p class="hint">Tensió, intensitat i potències de cada element. Comprova el <b>teorema de Boucherot</b>: la potència activa total és la suma de les actives i la reactiva total és la suma de les reactives (amb signe). La potència aparent, en canvi, <b>no</b> se suma.</p>
+    <div class="card">
+      <div class="tbl-wrap"><table class="sum" id="sumTbl"></table></div>
+      <div class="badges" id="badges"></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Per entendre-ho millor</h2>
+    <p class="hint">Idees clau per interpretar les mesures.</p>
+    <div class="theory">
+      <details class="th" open><summary>Què mesura (i què no) un multímetre en AC</summary><div class="bd">
+        <p>En la posició <b>V~</b> o <b>A~</b> el multímetre mostra el <b>valor eficaç</b> (RMS) de la tensió o de la intensitat. És un nombre positiu: <b>no indica la fase</b>.</p>
+        <p>Per això, en un circuit sèrie les lectures del multímetre sobre R, L i C <b>no sumen</b> la tensió de la font: les tensions s'han de sumar com a fasors (vectors), tenint en compte els angles.</p>
+        <p>Un multímetre <i>True RMS</i> mesura bé qualsevol forma d'ona; un de barat (no TRMS) només és exacte amb ones sinusoïdals pures, com les d'aquest simulador.</p>
+      </div></details>
+      <details class="th"><summary>Com es connecta cada instrument</summary><div class="bd">
+        <ul>
+          <li><b>Voltímetre</b>: en <b>paral·lel</b> amb allò que vols mesurar. Té una resistència interna molt gran, i per això gairebé no altera el circuit.</li>
+          <li><b>Amperímetre</b>: en <b>sèrie</b>. Cal obrir el circuit i fer passar tot el corrent per dins de l'instrument (borna A i COM). La seva resistència interna és quasi nul·la: si el connectes en paral·lel provoques un <b>curtcircuit</b> i es fon el fusible.</li>
+          <li><b>Wattímetre / analitzador de xarxes</b>: combina les dues coses. Mesura la tensió entre dos punts (en paral·lel) i la intensitat que entra al receptor (en sèrie o amb una pinça).</li>
+        </ul>
+        <p>A la pràctica, per mesurar intensitats en instal·lacions s'utilitza sovint la <b>pinça amperimètrica</b>, que mesura el corrent sense obrir el circuit.</p>
+      </div></details>
+      <details class="th"><summary>Fasors: forma polar i forma binòmica</summary><div class="bd">
+        <p>Una tensió o intensitat sinusoïdal es representa amb un fasor: un nombre complex amb <b>mòdul</b> (valor eficaç) i <b>fase</b> (angle).</p>
+        <ul>
+          <li>Forma polar: <var>V</var> = 230 ∠ 30° V</li>
+          <li>Forma binòmica: <var>V</var> = <var>a</var> + j<var>b</var> = 230·cos 30° + j·230·sin 30° = 199,19 + j115,00 V</li>
+        </ul>
+        <p>Per sumar i restar és més còmoda la forma binòmica; per multiplicar i dividir, la polar (es multipliquen els mòduls i se sumen els angles).</p>
+      </div></details>
+      <details class="th"><summary>Impedàncies de R, L i C</summary><div class="bd">
+        <ul>
+          <li>Resistència: <var>Z<sub>R</sub></var> = <var>R</var> (tensió i intensitat en fase).</li>
+          <li>Bobina: <var>Z<sub>L</sub></var> = j<var>X<sub>L</sub></var>, amb <var>X<sub>L</sub></var> = 2π<var>fL</var>. La intensitat va <b>90° endarrerida</b> respecte de la tensió.</li>
+          <li>Condensador: <var>Z<sub>C</sub></var> = −j<var>X<sub>C</sub></var>, amb <var>X<sub>C</sub></var> = 1/(2π<var>fC</var>). La intensitat va <b>90° avançada</b>.</li>
+        </ul>
+        <p>Si puges la freqüència, <var>X<sub>L</sub></var> augmenta i <var>X<sub>C</sub></var> disminueix. Quan són iguals, el circuit entra en <b>ressonància</b>.</p>
+      </div></details>
+      <details class="th"><summary>Potències activa, reactiva i aparent</summary><div class="bd">
+        <p>Amb els fasors de tensió <var>V</var> i intensitat <var>I</var> d'un receptor, la potència aparent complexa és <var>S</var> = <var>V</var>·<var>I</var>* (<var>I</var>* és el conjugat de la intensitat):</p>
+        <ul>
+          <li><b>Activa</b> <var>P</var> = <var>V·I</var>·cos φ (W): la que es transforma en calor o treball. Només la consumeixen les resistències.</li>
+          <li><b>Reactiva</b> <var>Q</var> = <var>V·I</var>·sin φ (var): la que bescanvien bobines (Q &gt; 0) i condensadors (Q &lt; 0) amb la xarxa.</li>
+          <li><b>Aparent</b> <var>S</var> = <var>V·I</var> (VA): la que ha de poder transportar la instal·lació. <var>S</var>² = <var>P</var>² + <var>Q</var>².</li>
+        </ul>
+        <p>El <b>factor de potència</b> cos φ = <var>P</var>/<var>S</var> indica quina part de la potència aparent és útil.</p>
+      </div></details>
+      <details class="th"><summary>Valor eficaç i valor de pic</summary><div class="bd">
+        <p>El valor eficaç d'una sinusoide és el valor de la tensió contínua que produiria la mateixa calor en una resistència. Es relaciona amb el valor màxim (de pic) així:</p>
+        <p class="eq"><var>V</var><sub>ef</sub> = <var>V</var><sub>màx</sub> / √2 ≈ 0,707·<var>V</var><sub>màx</sub></p>
+        <p>Per exemple, els 230 V de la xarxa tenen un valor de pic de 230·√2 ≈ 325 V. Un oscil·loscopi veu el pic; un multímetre, l'eficaç.</p>
+      </div></details>
+    </div>
+  </section>
+</main>
+<footer>Mesures en corrent altern · Material didàctic del mòdul 0962 (Sistemes de potència). Simulació amb elements ideals i instrument ideal.</footer>
+
+<script>
+'use strict';
+/* ---------- complex numbers ---------- */
+const cx = (re, im = 0) => ({ re, im });
+const add = (a, b) => cx(a.re + b.re, a.im + b.im);
+const sub = (a, b) => cx(a.re - b.re, a.im - b.im);
+const mul = (a, b) => cx(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re);
+const div = (a, b) => { const d = b.re * b.re + b.im * b.im; return cx((a.re * b.re + a.im * b.im) / d, (a.im * b.re - a.re * b.im) / d); };
+const conj = a => cx(a.re, -a.im);
+const neg = a => cx(-a.re, -a.im);
+const mag = a => Math.hypot(a.re, a.im);
+const angDeg = a => Math.atan2(a.im, a.re) * 180 / Math.PI;
+const ZERO = cx(0);
+
+/* ---------- number formatting (Catalan: decimal comma) ---------- */
+const PFX = [[1e3, 'k'], [1, ''], [1e-3, 'm'], [1e-6, 'µ']];
+function eng(a) { a = Math.abs(a); if (a < 1e-12) return [1, '']; for (const [f, p] of PFX) if (a >= f * 0.99995) return [f, p]; return [1e-6, 'µ']; }
+function num(x, sig = 4) {
+  if (!isFinite(x)) return '∞';
+  if (Math.abs(x) < 1e-12) x = 0;
+  const a = Math.abs(x);
+  const d = a === 0 ? 2 : Math.max(0, Math.min(6, sig - 1 - Math.floor(Math.log10(a))));
+  let s = x.toFixed(d);
+  if (/^-0(\.0+)?$/.test(s)) s = s.slice(1);
+  return s.replace('-', '−').replace('.', ',');
+}
+const fx = (x, d) => { let s = x.toFixed(d); if (/^-0(\.0+)?$/.test(s)) s = s.slice(1); return s.replace('-', '−').replace('.', ','); };
+function q(x, unit, sig = 4) { const [f, p] = eng(x); return num(x / f, sig) + ' ' + p + unit; }
+function angS(z) { if (mag(z) < 1e-9) return '—'; let a = angDeg(z); if (a <= -179.995) a = 180; return fx(a, 2) + '°'; }
+function polar(z, unit) { return mag(z) < 1e-9 ? '0 ' + unit : q(mag(z), unit) + ' ∠ ' + angS(z); }
+function binom(z, unit) {
+  const m = mag(z);
+  if (m < 1e-9) return '0 ' + unit;
+  const [f, p] = eng(m);
+  const d = Math.max(0, Math.min(6, 3 - Math.floor(Math.log10(m / f))));
+  const re = Math.abs(z.re) < 1e-9 * m ? 0 : z.re / f, im = Math.abs(z.im) < 1e-9 * m ? 0 : z.im / f;
+  return fx(re, d) + ' ' + (im < 0 ? '−' : '+') + ' j' + fx(Math.abs(im), d) + ' ' + p + unit;
+}
+const esc = s => String(s);
+
+/* ---------- topologies ---------- */
+/* points: [x, y, label dx, label dy]; trams: ordered a→b (reference direction of current);
+   kind: R/L/C (element), S (source), W (wire); side: where the element label goes */
+const TOPOS = {
+  serie: {
+    name: 'RLC sèrie', desc: 'R, L i C un darrere l\'altre',
+    points: { A: [100, 80, -16, -12], B: [330, 80, 0, -16], C: [560, 80, 16, -12], D: [560, 290, 16, 22], E: [100, 290, -16, 22] },
+    trams: [
+      { a: 'E', b: 'A', kind: 'S' }, { a: 'A', b: 'B', kind: 'R', side: 'up' }, { a: 'B', b: 'C', kind: 'L', side: 'up' },
+      { a: 'C', b: 'D', kind: 'C', side: 'right' }, { a: 'D', b: 'E', kind: 'W' }
+    ],
+    presets: [['R', 'A', 'B'], ['L', 'B', 'C'], ['C', 'C', 'D'], ['R + L', 'A', 'C'], ['Font (total)', 'A', 'E']],
+    icon: 'M4 18V6h8 M12 6h4 l2-3 2 6 2-6 2 6 2-3 M26 6h8 M34 6h16v5 M47 11h6 M47 14h6 M50 14v4H4'
+  },
+  paralel: {
+    name: 'RLC paral·lel', desc: 'R, L i C en tres branques',
+    points: { A: [90, 70, -16, -12], B: [240, 70, 0, -16], C: [390, 70, 0, -16], D: [540, 70, 16, -12], E: [90, 290, -16, 22], F: [240, 290, 0, 26], G: [390, 290, 0, 26], H: [540, 290, 16, 22] },
+    trams: [
+      { a: 'E', b: 'A', kind: 'S' }, { a: 'A', b: 'B', kind: 'W' }, { a: 'B', b: 'C', kind: 'W' }, { a: 'C', b: 'D', kind: 'W' },
+      { a: 'B', b: 'F', kind: 'R', side: 'right' }, { a: 'C', b: 'G', kind: 'L', side: 'right' }, { a: 'D', b: 'H', kind: 'C', side: 'right' },
+      { a: 'H', b: 'G', kind: 'W' }, { a: 'G', b: 'F', kind: 'W' }, { a: 'F', b: 'E', kind: 'W' }
+    ],
+    dipoles: [
+      { p: 'B', q: 'F', els: ['R'], cur: 'BF', label: 'la resistència R' },
+      { p: 'C', q: 'G', els: ['L'], cur: 'CG', label: 'la bobina L' },
+      { p: 'D', q: 'H', els: ['C'], cur: 'DH', label: 'el condensador C' },
+      { p: 'A', q: 'E', els: ['R', 'L', 'C'], cur: 'AB', label: 'tot el circuit (R ∥ L ∥ C)', total: true }
+    ],
+    presets: [['R', 'B', 'F'], ['L', 'C', 'G'], ['C', 'D', 'H'], ['Font (total)', 'A', 'E']],
+    icon: 'M4 18V4h46 M18 4v5 M15 9h6v5h-6z M18 14v4 M34 4v4 l3 1-3 1 3 1-3 1 3 1-3 1v2 M50 4v6 M47 10h6 M47 12h6 M50 12v6 M4 18h46'
+  },
+  mixt: {
+    name: '(R + L) ∥ C', desc: 'R i L en sèrie, en paral·lel amb C',
+    points: { A: [100, 60, -16, -12], B: [300, 60, 0, -16], C: [520, 60, 16, -12], D: [300, 180, 18, 5], E: [100, 300, -16, 22], F: [300, 300, 0, 26], G: [520, 300, 16, 22] },
+    trams: [
+      { a: 'E', b: 'A', kind: 'S' }, { a: 'A', b: 'B', kind: 'W' }, { a: 'B', b: 'C', kind: 'W' },
+      { a: 'B', b: 'D', kind: 'R', side: 'right' }, { a: 'D', b: 'F', kind: 'L', side: 'right' }, { a: 'C', b: 'G', kind: 'C', side: 'right' },
+      { a: 'G', b: 'F', kind: 'W' }, { a: 'F', b: 'E', kind: 'W' }
+    ],
+    dipoles: [
+      { p: 'B', q: 'D', els: ['R'], cur: 'BD', label: 'la resistència R' },
+      { p: 'D', q: 'F', els: ['L'], cur: 'DF', label: 'la bobina L' },
+      { p: 'B', q: 'F', els: ['R', 'L'], cur: 'BD', label: 'la branca R + L' },
+      { p: 'C', q: 'G', els: ['C'], cur: 'CG', label: 'el condensador C' },
+      { p: 'A', q: 'E', els: ['R', 'L', 'C'], cur: 'AB', label: 'tot el circuit ((R + L) ∥ C)', total: true }
+    ],
+    presets: [['R', 'B', 'D'], ['L', 'D', 'F'], ['Branca R + L', 'B', 'F'], ['C', 'C', 'G'], ['Font (total)', 'A', 'E']],
+    icon: 'M4 18V4h46 M22 4v3 M19 7h6v4h-6z M22 11v1 l3 1-3 1 3 1-3 1v2 M50 4v6 M47 10h6 M47 12h6 M50 12v6 M4 18h46'
+  }
+};
+/* series loop: the dipole between two points is the arc of the loop that does not contain the source */
+(function seriesDipoles() {
+  const t = TOPOS.serie, order = ['A', 'B', 'C', 'D', 'E'], names = { R: 'R', L: 'L', C: 'C' };
+  t.dipoles = [];
+  for (let i = 0; i < order.length; i++) for (let j = i + 1; j < order.length; j++) {
+    const els = [];
+    for (let k = i; k < j; k++) { const tr = t.trams.find(x => x.a === order[k] && x.b === order[k + 1]); if (tr.kind !== 'W') els.push(tr.kind); }
+    let label;
+    if (els.length === 0) label = 'només un tram de fil';
+    else if (els.length === 3) label = 'tot el circuit (R + L + C)';
+    else if (els.length === 1) label = { R: 'la resistència R', L: 'la bobina L', C: 'el condensador C' }[els[0]];
+    else label = 'el conjunt ' + els.map(e => names[e]).join(' + ') + ' (en sèrie)';
+    t.dipoles.push({ p: order[i], q: order[j], els, cur: order[i] + order[i + 1], label, total: els.length === 3 });
+  }
+})();
+/* in parallel topologies a single wire tram is also a (trivial) dipole: V = 0 → S = 0 */
+for (const k of ['paralel', 'mixt']) for (const tr of TOPOS[k].trams) if (tr.kind === 'W') TOPOS[k].dipoles.push({ p: tr.a, q: tr.b, els: [], cur: tr.a + tr.b, label: 'només un tram de fil' });
+
+/* ---------- state ---------- */
+const DEF = { V: 230, f: 50, R: 100, L: 300, C: 47 };
+const st = { topo: 'serie', ...DEF, red: 'A', black: 'E', fn: 'V', next: 'red' };
+let sol = null;
+
+/* ---------- solver ---------- */
+function solve() {
+  const w = 2 * Math.PI * st.f, Lh = st.L / 1000, Cf = st.C * 1e-6;
+  const XL = w * Lh, XC = 1 / (w * Cf);
+  const ZR = cx(st.R), ZL = cx(0, XL), ZC = cx(0, -XC), Vs = cx(st.V);
+  const s = { w, XL, XC, ZR, ZL, ZC, Vs, pot: {}, I: {}, el: {} };
+  if (st.topo === 'serie') {
+    const Z = add(add(ZR, ZL), ZC), I = div(Vs, Z);
+    const VR = mul(I, ZR), VL = mul(I, ZL), VC = mul(I, ZC);
+    Object.assign(s, { Zeq: Z, IT: I });
+    s.pot = { A: Vs, B: sub(Vs, VR), C: sub(sub(Vs, VR), VL), D: ZERO, E: ZERO };
+    for (const k of ['EA', 'AB', 'BC', 'CD', 'DE']) s.I[k] = I;
+    s.el = { R: { Z: ZR, V: VR, I }, L: { Z: ZL, V: VL, I }, C: { Z: ZC, V: VC, I } };
+  } else if (st.topo === 'paralel') {
+    const IR = div(Vs, ZR), IL = div(Vs, ZL), IC = div(Vs, ZC), IT = add(add(IR, IL), IC);
+    Object.assign(s, { IT, Zeq: div(Vs, IT) });
+    s.pot = { A: Vs, B: Vs, C: Vs, D: Vs, E: ZERO, F: ZERO, G: ZERO, H: ZERO };
+    const ILC = add(IL, IC);
+    s.I = { EA: IT, AB: IT, BC: ILC, CD: IC, BF: IR, CG: IL, DH: IC, HG: IC, GF: ILC, FE: IT };
+    s.el = { R: { Z: ZR, V: Vs, I: IR }, L: { Z: ZL, V: Vs, I: IL }, C: { Z: ZC, V: Vs, I: IC } };
+  } else {
+    const ZRL = add(ZR, ZL), IRL = div(Vs, ZRL), IC = div(Vs, ZC), IT = add(IRL, IC);
+    const VR = mul(IRL, ZR), VL = mul(IRL, ZL);
+    Object.assign(s, { IT, Zeq: div(Vs, IT), ZRL, IRL });
+    s.pot = { A: Vs, B: Vs, C: Vs, D: sub(Vs, VR), E: ZERO, F: ZERO, G: ZERO };
+    s.I = { EA: IT, AB: IT, BC: IC, BD: IRL, DF: IRL, CG: IC, GF: IC, FE: IT };
+    s.el = { R: { Z: ZR, V: VR, I: IRL }, L: { Z: ZL, V: VL, I: IRL }, C: { Z: ZC, V: Vs, I: IC } };
+  }
+  for (const k in s.el) { const e = s.el[k]; e.S = mul(e.V, conj(e.I)); }
+  s.ST = mul(Vs, conj(s.IT));
+  return s;
+}
+
+/* what the probes on X (red) and Y (black) can measure */
+function measure() {
+  const T = TOPOS[st.topo], X = st.red, Y = st.black;
+  const V = sub(sol.pot[X], sol.pot[Y]);
+  const m = { X, Y, V, same: X === Y };
+  const tr = T.trams.find(t => (t.a === X && t.b === Y) || (t.a === Y && t.b === X));
+  // reference: current from X towards Y through the tram; at the source, current leaving it by X towards the load
+  if (tr && !m.same) { const I = sol.I[tr.a + tr.b], fwd = tr.kind === 'S' ? tr.b === X : tr.a === X; m.tram = { ...tr, I: fwd ? I : neg(I) }; }
+  const dp = T.dipoles.find(d => (d.p === X && d.q === Y) || (d.p === Y && d.q === X));
+  if (dp && !m.same) {
+    const Iin = sol.I[dp.cur];                       // current entering the dipole at p
+    const Vpq = sub(sol.pot[dp.p], sol.pot[dp.q]);
+    m.dip = { ...dp, Vpq, Iin, S: mul(Vpq, conj(Iin)) };
+  }
+  return m;
+}
+
+/* ---------- schematic drawing ---------- */
+const NS = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+const schem = document.getElementById('schem');
+const EL_LEN = { R: 66, L: 64, C: 12 };
+
+function valText(kind) {
+  if (kind === 'R') return q(st.R, 'Ω', 3);
+  if (kind === 'L') return q(st.L / 1000, 'H', 3);
+  if (kind === 'C') return q(st.C * 1e-6, 'F', 3);
+  return '';
+}
+function drawSymbol(g, kind, d) {
+  // local frame: element from (-d/2,0) to (d/2,0)
+  const s = EL_LEN[kind] / 2;
+  svgEl('path', { class: 'w', d: `M${-d / 2} 0H${-s} M${s} 0H${d / 2}` }, g);
+  if (kind === 'R') svgEl('rect', { class: 'sym sym-R', x: -s, y: -11, width: 2 * s, height: 22, rx: 2 }, g);
+  if (kind === 'L') svgEl('path', { class: 'sym sym-L', d: `M${-s} 0` + ' a8 8 0 0 1 16 0'.repeat(4) }, g);
+  if (kind === 'C') svgEl('path', { class: 'sym sym-C', d: `M${-s} -17V17 M${s} -17V17` }, g);
+}
+function drawSchematic() {
+  const T = TOPOS[st.topo], P = T.points;
+  schem.innerHTML = '';
+  const gTr = svgEl('g', {}, schem);
+  for (const tr of T.trams) {
+    const [x1, y1] = P[tr.a], [x2, y2] = P[tr.b];
+    const g = svgEl('g', { class: 'tram', 'data-id': tr.a + tr.b }, gTr);
+    svgEl('path', { class: 'tram-hl', d: `M${x1} ${y1}L${x2} ${y2}` }, g);
+    if (tr.kind === 'W') { svgEl('path', { class: 'w', d: `M${x1} ${y1}L${x2} ${y2}` }, g); continue; }
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, d = Math.hypot(x2 - x1, y2 - y1);
+    const rot = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+    if (tr.kind === 'S') {
+      svgEl('path', { class: 'w', d: `M${x1} ${y1}L${x1} ${my + 26} M${x2} ${my - 26}L${x2} ${y2}` }, g);
+      svgEl('circle', { class: 'sym sym-S', cx: mx, cy: my, r: 26 }, g);
+      svgEl('path', { class: 'sym sym-S', d: `M${mx - 15} ${my} c5 -16 10 -16 15 0 s10 16 15 0` }, g);
+      svgEl('text', { class: 'val', x: mx + 34, y: my - 30, 'font-size': 15 }, g).textContent = '+';
+      svgEl('text', { class: 'lbl', x: mx + 36, y: my + 2 }, g).textContent = 'V';
+      svgEl('text', { class: 'val', x: mx + 36, y: my + 20 }, g).textContent = q(st.V, 'V', 3);
+      svgEl('text', { class: 'val', x: mx + 36, y: my + 36 }, g).textContent = q(st.f, 'Hz', 3);
+      continue;
+    }
+    const gs = svgEl('g', { transform: `translate(${mx} ${my}) rotate(${rot})` }, g);
+    drawSymbol(gs, tr.kind, d);
+    let lx = mx, ly = my, anchor = 'middle';
+    if (tr.side === 'up') { ly = my - 26; }
+    if (tr.side === 'right') { lx = mx + (tr.kind === 'C' ? 26 : 22); anchor = 'start'; }
+    const lb = svgEl('text', { class: 'lbl', x: lx, y: tr.side === 'up' ? ly - 14 : ly - 4, 'text-anchor': anchor }, g);
+    lb.textContent = tr.kind;
+    svgEl('text', { class: 'val', x: lx, y: tr.side === 'up' ? ly + 2 : ly + 14, 'text-anchor': anchor }, g).textContent = valText(tr.kind);
+  }
+  svgEl('g', { id: 'overlay' }, schem);
+  const gPt = svgEl('g', {}, schem);
+  for (const k in P) {
+    const [x, y, dx, dy] = P[k];
+    const g = svgEl('g', { class: 'pt', 'data-pt': k, tabindex: 0, role: 'button', 'aria-label': 'Punt ' + k }, gPt);
+    svgEl('circle', { class: 'hit', cx: x, cy: y, r: 20 }, g);
+    svgEl('circle', { class: 'dot', cx: x, cy: y, r: 6.5 }, g);
+    svgEl('text', { x: x + dx, y: y + dy + 5, 'text-anchor': 'middle' }, g).textContent = k;
+    g.addEventListener('click', () => pickPoint(k));
+    g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickPoint(k); } });
+  }
+}
+
+function drawOverlay(m) {
+  const T = TOPOS[st.topo], P = T.points, ov = schem.querySelector('#overlay');
+  ov.innerHTML = '';
+  schem.querySelectorAll('.pt').forEach(g => { g.classList.toggle('red', g.dataset.pt === st.red); g.classList.toggle('black', g.dataset.pt === st.black && st.black !== st.red); });
+  schem.querySelectorAll('.tram').forEach(g => g.classList.remove('hl-i', 'hl-p'));
+  if (m.same) return;
+  const [x1, y1] = P[m.X], [x2, y2] = P[m.Y];
+  const cxm = 320, cym = 180;
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  let nx = -(y2 - y1), ny = x2 - x1; const nl = Math.hypot(nx, ny); nx /= nl; ny /= nl;
+  if (nx * (mx - cxm) + ny * (my - cym) < 0) { nx = -nx; ny = -ny; }
+
+  if (st.fn === 'A') {
+    if (!m.tram) return;
+    const g = schem.querySelector(`.tram[data-id="${m.tram.a + m.tram.b}"]`); if (g) g.classList.add('hl-i');
+    // current arrow X → Y on the tram, near X for elements, centred for wires; inside the source it flows Y → X
+    const src = m.tram.kind === 'S', tt = m.tram.kind === 'W' ? 0.5 : 0.18;
+    const px = x1 + (x2 - x1) * tt, py = y1 + (y2 - y1) * tt, a = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI + (src ? 180 : 0);
+    svgEl('path', { class: 'iarrow', d: 'M8 0 L-7 -7 L-3 0 L-7 7 Z', transform: `translate(${px} ${py}) rotate(${a})` }, ov);
+    svgEl('text', { class: 'ilbl', x: px + nx * 20, y: py + ny * 20 + 5, 'text-anchor': 'middle' }, ov).textContent = 'I';
+    // ammeter symbol on the side opposite to the element's label
+    let sgn = 1;
+    if (m.tram.side === 'right') sgn = nx > 0 ? -1 : 1;
+    if (m.tram.side === 'up') sgn = ny < 0 ? -1 : 1;
+    const sx = (x1 + x2) / 2 + nx * 34 * sgn, sy = (y1 + y2) / 2 + ny * 34 * sgn;
+    const gs = svgEl('g', { class: 'meter-sym' }, ov);
+    svgEl('circle', { cx: sx, cy: sy, r: 15 }, gs); svgEl('text', { x: sx, y: sy }, gs).textContent = 'A';
+    return;
+  }
+  if (st.fn !== 'V' && m.dip) {
+    const T2 = TOPOS[st.topo];
+    // highlight the elements that belong to the dipole
+    const want = new Set(m.dip.els);
+    for (const tr of T2.trams) {
+      if (tr.kind === 'W' || tr.kind === 'S' || !want.has(tr.kind)) continue;
+      const g = schem.querySelector(`.tram[data-id="${tr.a + tr.b}"]`); if (g) g.classList.add('hl-p');
+    }
+  }
+  const sx = mx + nx * 50, sy = my + ny * 50;
+  svgEl('path', { class: 'lead red', d: `M${x1} ${y1}L${sx} ${sy}` }, ov);
+  svgEl('path', { class: 'lead black', d: `M${x2} ${y2}L${sx} ${sy}` }, ov);
+  const gs = svgEl('g', { class: 'meter-sym' }, ov);
+  svgEl('circle', { cx: sx, cy: sy, r: 16 }, gs);
+  svgEl('text', { x: sx, y: sy }, gs).textContent = st.fn === 'V' ? 'V' : 'W';
+}
+
+/* ---------- LCD (seven segments) ---------- */
+const lcd = document.getElementById('lcd');
+const CHARS = { '0': 'abcdef', '1': 'bc', '2': 'abdeg', '3': 'abcdg', '4': 'bcfg', '5': 'acdfg', '6': 'acdefg', '7': 'abc', '8': 'abcdefg', '9': 'abcdfg', '-': 'g', 'O': 'abcdef', 'L': 'def', ' ': '' };
+function segShapes(w, h, t) {
+  const g = 1.3, ht = t / 2;
+  const H = (x, y, L) => [[x + g, y], [x + g + ht, y - ht], [x + L - g - ht, y - ht], [x + L - g, y], [x + L - g - ht, y + ht], [x + g + ht, y + ht]];
+  const V = (x, y, L) => [[x, y + g], [x + ht, y + g + ht], [x + ht, y + L - g - ht], [x, y + L - g], [x - ht, y + L - g - ht], [x - ht, y + g + ht]];
+  return { a: H(0, 0, w), b: V(w, 0, h / 2), c: V(w, h / 2, h / 2), d: H(0, h, w), e: V(0, h / 2, h / 2), f: V(0, 0, h / 2), g: H(0, h / 2, w) };
+}
+function buildDisplay(x, y, w, h, t, n, gap) {
+  const shapes = segShapes(w, h, t), disp = { digits: [] };
+  const root = svgEl('g', { transform: `translate(${x} ${y}) skewX(-7)` }, lcd);
+  disp.sign = svgEl('polygon', { class: 'seg', points: shapes.g.map(p => [p[0] - w * 0.75 - gap, p[1]].join(',')).join(' ') }, root);
+  for (let i = 0; i < n; i++) {
+    const g = svgEl('g', { transform: `translate(${i * (w + gap)} 0)` }, root), d = { segs: {} };
+    for (const k in shapes) d.segs[k] = svgEl('polygon', { class: 'seg', points: shapes[k].map(p => p.join(',')).join(' ') }, g);
+    d.dp = svgEl('circle', { class: 'seg', cx: w + gap / 2, cy: h, r: t * 0.55 }, g);
+    disp.digits.push(d);
+  }
+  return disp;
+}
+function setDisplay(disp, str) {
+  let neg = false;
+  if (/^-\d/.test(str)) { neg = true; str = str.slice(1); }
+  const cells = [];
+  for (const ch of str) { if (ch === '.') { if (cells.length) cells[cells.length - 1].dp = true; } else cells.push({ ch, dp: false }); }
+  while (cells.length < disp.digits.length) cells.unshift({ ch: ' ', dp: false });
+  disp.digits.forEach((d, i) => {
+    const on = CHARS[cells[i].ch] || '';
+    for (const k in d.segs) d.segs[k].classList.toggle('on', on.includes(k));
+    d.dp.classList.toggle('on', cells[i].dp);
+  });
+  disp.sign.classList.toggle('on', neg);
+}
+let mainDisp, subDisp, ann = {}, unitTxt, subLbl, bars = [];
+function buildLCD() {
+  const A = (k, x, y, txt) => { ann[k] = svgEl('text', { class: 'ann', x, y }, lcd); ann[k].textContent = txt; };
+  A('auto', 12, 18, 'AUTO'); A('trms', 52, 18, 'TRMS'); A('ac', 92, 18, 'AC ~'); A('ol', 134, 18, 'OL'); A('pf', 222, 18, 'POWER');
+  mainDisp = buildDisplay(48, 30, 34, 62, 6.5, 4, 14);
+  unitTxt = svgEl('text', { class: 'unit', x: 243, y: 90 }, lcd);
+  subDisp = buildDisplay(206, 108, 12, 22, 3, 4, 6);
+  subLbl = svgEl('text', { class: 'ann on', x: 168, y: 126 }, lcd);
+  for (let i = 0; i < 30; i++) bars.push(svgEl('rect', { class: 'bar', x: 12 + i * 4.4, y: 112, width: 3, height: 10 }, lcd));
+  const sc = svgEl('text', { class: 'scale', x: 12, y: 140 }, lcd); sc.textContent = '0    ·    ·    ·    ·    ·  FS';
+}
+/* 6000-count autoranging, like a real handheld meter */
+function meterReading(x, base) {
+  const a = Math.abs(x);
+  if (base === 'A' && a > 10) return { ol: true, unit: 'A' };
+  if (base === 'V' && a > 1000) return { ol: true, unit: 'V' };
+  let f = 1, pf = '';
+  if (a < 0.6 && a > 0) { f = 1e-3; pf = 'm'; }
+  else if (a >= 6000) { f = 1e3; pf = 'k'; }
+  if (a === 0 && (base === 'V' || base === 'A')) { f = 1; pf = ''; }
+  const s = a / f;
+  const dec = s < 6 ? 3 : s < 60 ? 2 : s < 600 ? 1 : 0;
+  const full = [6, 60, 600, 6000][3 - dec];
+  let str = s.toFixed(dec);
+  if (parseFloat(str) >= full && dec > 0) str = s.toFixed(dec - 1);
+  return { str: (x < 0 && parseFloat(str) !== 0 ? '-' : '') + str, unit: pf + base, frac: Math.min(1, s / full) };
+}
+
+/* ---------- dial ---------- */
+const FNS = [
+  { k: 'V', lab: 'V~', sm: 'tensió', ang: -64 },
+  { k: 'A', lab: 'A~', sm: 'intensitat', ang: -32 },
+  { k: 'W', lab: 'W', sm: 'activa', ang: 0 },
+  { k: 'var', lab: 'var', sm: 'reactiva', ang: 32 },
+  { k: 'VA', lab: 'VA', sm: 'aparent', ang: 64 }
+];
+function buildDial() {
+  const dial = document.getElementById('dial');
+  for (const fnc of FNS) {
+    const r = 92, a = fnc.ang * Math.PI / 180;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'dial-pos'; b.dataset.fn = fnc.k;
+    b.style.left = (130 + r * Math.sin(a)) + 'px'; b.style.top = (104 - r * Math.cos(a)) + 'px';
+    b.innerHTML = `${fnc.lab}<small>${fnc.sm}</small>`;
+    b.setAttribute('aria-label', 'Funció ' + fnc.sm);
+    b.addEventListener('click', () => { st.fn = fnc.k; update(); });
+    dial.appendChild(b);
+  }
+}
+
+/* ---------- UI: topology, inputs, probes ---------- */
+function buildTopos() {
+  const box = document.getElementById('topos');
+  for (const k in TOPOS) {
+    const t = TOPOS[k], b = document.createElement('button');
+    b.type = 'button'; b.className = 'topo'; b.dataset.topo = k;
+    b.innerHTML = `<svg viewBox="0 0 54 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="${t.icon}"/></svg><div><b>${t.name}</b><span>${t.desc}</span></div>`;
+    b.addEventListener('click', () => { st.topo = k; st.red = 'A'; st.black = 'E'; st.next = 'red'; drawSchematic(); fillSelects(); update(); });
+    box.appendChild(b);
+  }
+}
+const inputs = { V: document.getElementById('inV'), f: document.getElementById('inf'), R: document.getElementById('inR'), L: document.getElementById('inL'), C: document.getElementById('inC') };
+const parseNum = s => { const v = parseFloat(String(s).trim().replace(',', '.')); return isFinite(v) ? v : NaN; };
+const showNum = v => String(+v.toPrecision(6)).replace('.', ',');
+function writeInputs() { for (const k in inputs) { inputs[k].value = showNum(st[k]); inputs[k].closest('.fld').classList.remove('bad'); } }
+for (const k in inputs) inputs[k].addEventListener('input', () => {
+  const v = parseNum(inputs[k].value), ok = v > 0 && (k !== 'V' || v <= 100000) && (k !== 'f' || v <= 1e6);
+  inputs[k].closest('.fld').classList.toggle('bad', !ok);
+  if (ok) { st[k] = v; drawSchematic(); update(); }
+});
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const E12 = [1, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2], E6 = [1, 1.5, 2.2, 3.3, 4.7, 6.8];
+function randomize() {
+  const save = { V: st.V, f: st.f, R: st.R, L: st.L, C: st.C };
+  for (let n = 0; n < 200; n++) {
+    st.V = pick([24, 48, 125, 230, 230, 230]); st.f = pick([50, 50, 50, 60]);
+    st.R = +(pick(E12) * pick([10, 100])).toPrecision(2);
+    st.L = +(pick(E6) * pick([10, 100])).toPrecision(2);
+    st.C = +(pick(E6) * pick([1, 10, 10])).toPrecision(2);
+    const s = solve(), it = mag(s.IT), maxBranch = Math.max(...Object.values(s.el).map(e => mag(e.I)));
+    if (it > 0.02 && it < 8 && maxBranch < 9.5) return;
+  }
+  Object.assign(st, save);
+}
+document.getElementById('rndBtn').addEventListener('click', () => { randomize(); writeInputs(); drawSchematic(); update(true); });
+document.getElementById('defBtn').addEventListener('click', () => { Object.assign(st, DEF); writeInputs(); drawSchematic(); update(true); });
+
+const selRed = document.getElementById('selRed'), selBlack = document.getElementById('selBlack');
+function fillSelects() {
+  const pts = Object.keys(TOPOS[st.topo].points);
+  for (const sel of [selRed, selBlack]) sel.innerHTML = pts.map(p => `<option value="${p}">${p}</option>`).join('');
+  const pr = document.getElementById('presets');
+  pr.innerHTML = '<span>Connexions ràpides:</span>';
+  for (const [lab, a, b] of TOPOS[st.topo].presets) {
+    const c = document.createElement('button');
+    c.type = 'button'; c.className = 'chip'; c.dataset.pair = a + b;
+    c.textContent = `${lab} (${a}–${b})`;
+    c.addEventListener('click', () => { st.red = a; st.black = b; st.next = 'red'; update(); });
+    pr.appendChild(c);
+  }
+}
+selRed.addEventListener('change', () => { st.red = selRed.value; update(); });
+selBlack.addEventListener('change', () => { st.black = selBlack.value; update(); });
+document.getElementById('swapBtn').addEventListener('click', () => { [st.red, st.black] = [st.black, st.red]; update(); });
+function pickPoint(k) {
+  if (st.next === 'red') { if (k === st.black) st.black = st.red; st.red = k; st.next = 'black'; }
+  else { if (k === st.red) { st.red = st.black; } st.black = k; st.next = 'red'; }
+  update();
+}
+
+/* ---------- text helpers ---------- */
+const elName = { R: 'la resistència R', L: 'la bobina L', C: 'el condensador C', S: 'la font', W: 'un fil' };
+const vsub = (a, b) => `<var>V</var><sub>${a}${b}</sub>`;
+const isub = (a, b) => `<var>I</var><sub>${a}→${b}</sub>`;
+const card = (el, html) => { document.getElementById(el).innerHTML = html; };
+function kvRows(z, unit, label) {
+  return `<dl class="kv">
+    <dt>Mòdul</dt><dd class="big">${q(mag(z), unit)}</dd>
+    <dt>Fase</dt><dd>${angS(z)}</dd>
+    <dt>Forma polar</dt><dd>${polar(z, unit)}</dd>
+    <dt>Forma binòmica</dt><dd>${binom(z, unit)}</dd>
+  </dl>`;
+}
+function mmLine(x, base) {
+  const r = meterReading(x, base);
+  return `<div class="mm"><span>El multímetre llegeix</span><b>${r.ol ? 'OL (fora d\'escala)' : r.str.replace('-', '−').replace('.', ',') + ' ' + r.unit}</b></div>`;
+}
+
+/* ---------- main update ---------- */
+let lastKey = '';
+function update(flash) {
+  sol = solve();
+  const m = measure(), T = TOPOS[st.topo];
+  // controls state
+  document.querySelectorAll('.topo').forEach(b => b.setAttribute('aria-pressed', b.dataset.topo === st.topo));
+  document.querySelectorAll('.dial-pos').forEach(b => b.setAttribute('aria-pressed', b.dataset.fn === st.fn));
+  document.getElementById('knobPtr').style.transform = `rotate(${FNS.find(f => f.k === st.fn).ang}deg)`;
+  selRed.value = st.red; selBlack.value = st.black;
+  document.querySelectorAll('#presets .chip').forEach(c => c.classList.toggle('on', c.dataset.pair === st.red + st.black));
+  document.getElementById('nextHint').innerHTML = `Següent clic: <b style="color:${st.next === 'red' ? 'var(--red)' : 'var(--ink)'}">${st.next === 'red' ? 'punta vermella' : 'punta negra (COM)'}</b>`;
+  document.getElementById('infoW').textContent = 'ω = ' + num(sol.w, 4) + ' rad/s';
+  document.getElementById('infoXL').textContent = 'X_L = ' + q(sol.XL, 'Ω');
+  document.getElementById('infoXC').textContent = 'X_C = ' + q(sol.XC, 'Ω');
+  drawOverlay(m);
+  renderMeter(m, flash);
+  renderReads(m);
+  renderSteps(m);
+  renderPhasor(m);
+  renderSummary();
+}
+
+function renderMeter(m, flash) {
+  const fn = st.fn, note = document.getElementById('meterNote');
+  document.getElementById('jackA').className = 'jack' + (fn === 'A' ? ' red' : '');
+  document.getElementById('jackV').className = 'jack' + (fn !== 'A' ? ' red' : '');
+  for (const k in ann) ann[k].classList.remove('on');
+  ann.auto.classList.add('on'); ann.trms.classList.add('on'); ann.ac.classList.add('on');
+  let r = null, base = { V: 'V', A: 'A', W: 'W', var: 'var', VA: 'VA' }[fn], subStr = '----', subL = 'Hz', notes = [], warn = false;
+  const XY = `<b style="color:var(--red)">${m.X}</b> (vermella) i <b>${m.Y}</b> (COM)`;
+  if (m.same) {
+    notes.push('Les dues puntes són al mateix punt: no hi ha res a mesurar. Tria dos punts diferents.');
+    warn = true;
+  } else if (fn === 'V') {
+    r = meterReading(mag(m.V), 'V');
+    subStr = st.f.toFixed(st.f < 100 ? 2 : 1);
+    notes.push(`<b>Voltímetre</b> connectat en <b>paral·lel</b> entre ${XY}. Mostra el valor eficaç de ${vsub(m.X, m.Y)}, sense la fase.`);
+    if (mag(m.V) < 1e-9) notes.push('Llegeix 0 V perquè els dos punts estan units per fils sense cap element entremig: tenen el mateix potencial.');
+  } else if (fn === 'A') {
+    ann.ac.classList.add('on');
+    if (m.tram) {
+      r = meterReading(mag(m.tram.I), 'A');
+      subStr = st.f.toFixed(st.f < 100 ? 2 : 1);
+      if (m.tram.kind === 'W') notes.push(`<b>Amperímetre</b>: s'obre el fil entre ${m.X} i ${m.Y} i s'hi intercala l'instrument en <b>sèrie</b>, de manera que el corrent entri per la borna A (punta vermella, costat ${m.X}).`);
+      else if (m.tram.kind === 'S') notes.push(`<b>Amperímetre</b> en <b>sèrie</b> amb la font: mesura la intensitat total que subministra.`);
+      else {
+        notes.push(`<b>Amperímetre</b> en <b>sèrie</b> amb ${elName[m.tram.kind]}: s'obre el circuit en un dels seus borns i s'hi intercala l'instrument.`);
+        notes.push(`⚠️ <b>Compte!</b> Si posessis les puntes directament als borns ${m.X} i ${m.Y} (en paral·lel), l'amperímetre curtcircuitaria ${elName[m.tram.kind]}.`);
+      }
+      if (r.ol) { notes.push('<b>OL</b>: la intensitat supera els 10 A de l\'entrada A. En un instrument real es fondria el fusible de protecció!'); warn = true; }
+    } else {
+      notes.push(`Entre ${m.X} i ${m.Y} no hi ha un únic tram de circuit (fil o element) on intercalar l'amperímetre. Per mesurar intensitat tria <b>dos punts consecutius</b> units per un fil o per un sol element.`);
+      warn = true;
+    }
+  } else {
+    ann.pf.classList.add('on');
+    if (m.dip) {
+      const S = m.dip.S, val = fn === 'W' ? S.re : fn === 'var' ? S.im : mag(S);
+      r = meterReading(val, base);
+      const pf = mag(S) > 1e-9 ? S.re / mag(S) : NaN;
+      subL = 'PF'; subStr = isFinite(pf) ? pf.toFixed(3) : '----';
+      notes.push(`<b>Analitzador de potència</b>: puntes de tensió entre ${XY} i pinça al conductor que alimenta <b>${m.dip.label}</b>. A la pantalla petita, el factor de potència (PF = cos φ).`);
+      notes.push('Un multímetre normal no mesura potència: cal un wattímetre, una pinça wattimètrica o un analitzador de xarxes.');
+    } else {
+      notes.push(`Els punts ${m.X} i ${m.Y} no són els dos borns d'un mateix receptor. Per mesurar potència tria els borns d'un element, d'una branca o de la font (potència total).`);
+      warn = true;
+    }
+  }
+  if (r && r.ol) { setDisplay(mainDisp, 'OL '); ann.ol.classList.add('on'); }
+  else if (r) setDisplay(mainDisp, r.str);
+  else setDisplay(mainDisp, '----');
+  unitTxt.textContent = r ? r.unit : base;
+  unitTxt.setAttribute('font-size', (r ? r.unit : base).length > 3 ? 18 : 24);
+  setDisplay(subDisp, subStr);
+  subLbl.textContent = subL;
+  const lit = r && !r.ol ? Math.round(r.frac * 30) : 0;
+  bars.forEach((b, i) => b.classList.toggle('on', i < lit));
+  note.innerHTML = notes.map(n => `<p>${n}</p>`).join('');
+  note.classList.toggle('warn', warn);
+  document.getElementById('lcdText').textContent = 'Lectura: ' + (r ? (r.ol ? 'OL' : r.str + ' ' + r.unit) : 'sense lectura');
+  const key = [st.topo, st.red, st.black, st.fn, st.V, st.f, st.R, st.L, st.C].join('|');
+  if (key !== lastKey || flash) { const box = document.getElementById('lcdBox'); box.classList.remove('flash'); void box.offsetWidth; box.classList.add('flash'); lastKey = key; }
+}
+
+function renderReads(m) {
+  document.getElementById('measTitle').innerHTML = m.same ? 'Les dues puntes són al mateix punt.' :
+    `Punta vermella a <b style="color:var(--red)">${m.X}</b>, punta negra (COM) a <b>${m.Y}</b>. Signe de referència: tensió ${vsub(m.X, m.Y)} = <var>V</var><sub>${m.X}</sub> − <var>V</var><sub>${m.Y}</sub>; intensitat de ${m.X} cap a ${m.Y}.`;
+  // voltage
+  if (m.same) card('readV', `<h3>Tensió</h3><p class="na">Tria dos punts diferents.</p>`);
+  else card('readV', `<h3>Tensió ${vsub(m.X, m.Y)}</h3><p class="sub">Voltímetre en paral·lel entre ${m.X} i ${m.Y}</p>${kvRows(m.V, 'V')}${mmLine(mag(m.V), 'V')}`);
+  // current
+  if (m.tram) {
+    const where = m.tram.kind === 'W' ? `pel fil entre ${m.X} i ${m.Y}` : m.tram.kind === 'S' ? `de la font: surt pel born ${m.X} cap al circuit i torna per ${m.Y}` : `per ${elName[m.tram.kind]}`;
+    card('readI', `<h3>Intensitat ${isub(m.X, m.Y)}</h3><p class="sub">Corrent que circula ${where}</p>${kvRows(m.tram.I, 'A')}${mmLine(mag(m.tram.I), 'A')}`);
+  } else card('readI', `<h3>Intensitat</h3><p class="na">${m.same ? 'Tria dos punts diferents.' : `<b>No es pot mesurar entre ${m.X} i ${m.Y}.</b> L'amperímetre s'ha d'intercalar en sèrie dins d'un tram: tria dos punts consecutius units per un fil o per un sol element.`}</p>`);
+  // power
+  if (m.dip) {
+    const S = m.dip.S, pf = mag(S) > 1e-9 ? S.re / mag(S) : NaN;
+    const kind = Math.abs(S.im) < 1e-9 * Math.max(1, mag(S)) ? 'resistiu' : S.im > 0 ? 'inductiu' : 'capacitiu';
+    card('readP', `<h3>Potència de ${m.dip.label}</h3><p class="sub">Receptor connectat entre ${m.dip.p} i ${m.dip.q}</p>
+      <dl class="kv">
+        <dt>Activa <var>P</var></dt><dd class="big">${q(S.re, 'W')}</dd>
+        <dt>Reactiva <var>Q</var></dt><dd class="big">${q(S.im, 'var')}</dd>
+        <dt>Aparent <var>S</var></dt><dd class="big">${q(mag(S), 'VA')}</dd>
+        <dt>cos φ</dt><dd>${isFinite(pf) ? fx(pf, 3) + (mag(S) > 1e-9 ? ' (' + kind + ')' : '') : '—'}</dd>
+        <dt><var>S</var> complexa</dt><dd>${binom(S, 'VA')}</dd>
+      </dl>${m.dip.els.length === 0 ? '<div class="mm"><span>Entre dos punts d\'un mateix fil</span><b>V = 0 → P = 0</b></div>' : ''}`);
+  } else card('readP', `<h3>Potència</h3><p class="na">${m.same ? 'Tria dos punts diferents.' : `<b>${m.X} i ${m.Y} no són els borns d'un receptor.</b> Tria els dos borns d'un element, d'una branca o de la font (potència total). Fes servir les connexions ràpides.`}</p>`);
+}
+
+function renderSteps(m) {
+  const s = sol, out = [];
+  const f = num(st.f), L = num(st.L / 1000), C = q(st.C * 1e-6, 'F');
+  out.push(`<h4>Reactàncies</h4>
+    <p>La bobina i el condensador s'oposen al corrent altern segons la freqüència (ω = 2π<var>f</var> = ${num(s.w)} rad/s):</p>
+    <div class="eq"><var>X<sub>L</sub></var> = ω<var>L</var> = ${num(s.w)} · ${L} = <b>${q(s.XL, 'Ω')}</b></div>
+    <div class="eq"><var>X<sub>C</sub></var> = 1/(ω<var>C</var>) = 1/(${num(s.w)} · ${C}) = <b>${q(s.XC, 'Ω')}</b></div>`);
+  if (st.topo === 'serie') {
+    out.push(`<h4>Impedància total i intensitat</h4>
+      <p>En sèrie les impedàncies se sumen i per tots els elements circula la mateixa intensitat:</p>
+      <div class="eq"><var>Z</var> = <var>R</var> + j(<var>X<sub>L</sub></var> − <var>X<sub>C</sub></var>) = ${binom(s.Zeq, 'Ω')} = ${polar(s.Zeq, 'Ω')}</div>
+      <div class="eq"><var>I</var> = <var>V</var> / <var>Z</var> = ${q(st.V, 'V')} ∠ 0° / ${polar(s.Zeq, 'Ω')} = <b>${polar(s.IT, 'A')}</b></div>`);
+    out.push(`<h4>Tensió de cada element</h4>
+      <div class="eq"><var>V<sub>R</sub></var> = <var>I</var>·<var>R</var> = ${polar(s.el.R.V, 'V')}</div>
+      <div class="eq"><var>V<sub>L</sub></var> = <var>I</var>·j<var>X<sub>L</sub></var> = ${polar(s.el.L.V, 'V')}</div>
+      <div class="eq"><var>V<sub>C</sub></var> = <var>I</var>·(−j<var>X<sub>C</sub></var>) = ${polar(s.el.C.V, 'V')}</div>
+      <p>Fixa't: ${q(mag(s.el.R.V), 'V')} + ${q(mag(s.el.L.V), 'V')} + ${q(mag(s.el.C.V), 'V')} = ${q(mag(s.el.R.V) + mag(s.el.L.V) + mag(s.el.C.V), 'V')} ≠ ${q(st.V, 'V')}. Els mòduls no se sumen; els fasors sí.</p>`);
+  } else if (st.topo === 'paralel') {
+    out.push(`<h4>Intensitat de cada branca</h4>
+      <p>En paral·lel totes les branques tenen la tensió de la font, <var>V</var> = ${q(st.V, 'V')} ∠ 0°:</p>
+      <div class="eq"><var>I<sub>R</sub></var> = <var>V</var> / <var>R</var> = ${polar(s.el.R.I, 'A')}</div>
+      <div class="eq"><var>I<sub>L</sub></var> = <var>V</var> / (j<var>X<sub>L</sub></var>) = ${polar(s.el.L.I, 'A')}</div>
+      <div class="eq"><var>I<sub>C</sub></var> = <var>V</var> / (−j<var>X<sub>C</sub></var>) = ${polar(s.el.C.I, 'A')}</div>`);
+    out.push(`<h4>Intensitat total (1a llei de Kirchhoff)</h4>
+      <div class="eq"><var>I<sub>T</sub></var> = <var>I<sub>R</sub></var> + <var>I<sub>L</sub></var> + <var>I<sub>C</sub></var> = ${binom(s.IT, 'A')} = <b>${polar(s.IT, 'A')}</b></div>
+      <div class="eq"><var>Z</var><sub>eq</sub> = <var>V</var> / <var>I<sub>T</sub></var> = ${polar(s.Zeq, 'Ω')}</div>
+      <p>Fixa't: la suma dels mòduls de les branques (${q(mag(s.el.R.I) + mag(s.el.L.I) + mag(s.el.C.I), 'A')}) no coincideix amb <var>I<sub>T</sub></var> = ${q(mag(s.IT), 'A')}: <var>I<sub>L</sub></var> i <var>I<sub>C</sub></var> estan en oposició i es compensen.</p>`);
+  } else {
+    out.push(`<h4>Branca R + L</h4>
+      <div class="eq"><var>Z<sub>RL</sub></var> = <var>R</var> + j<var>X<sub>L</sub></var> = ${binom(s.ZRL, 'Ω')} = ${polar(s.ZRL, 'Ω')}</div>
+      <div class="eq"><var>I<sub>RL</sub></var> = <var>V</var> / <var>Z<sub>RL</sub></var> = ${polar(s.IRL, 'A')}</div>
+      <div class="eq"><var>V<sub>R</sub></var> = <var>I<sub>RL</sub></var>·<var>R</var> = ${polar(s.el.R.V, 'V')}</div>
+      <div class="eq"><var>V<sub>L</sub></var> = <var>I<sub>RL</sub></var>·j<var>X<sub>L</sub></var> = ${polar(s.el.L.V, 'V')}</div>`);
+    out.push(`<h4>Branca C i intensitat total</h4>
+      <div class="eq"><var>I<sub>C</sub></var> = <var>V</var> / (−j<var>X<sub>C</sub></var>) = ${polar(s.el.C.I, 'A')}</div>
+      <div class="eq"><var>I<sub>T</sub></var> = <var>I<sub>RL</sub></var> + <var>I<sub>C</sub></var> = ${binom(s.IT, 'A')} = <b>${polar(s.IT, 'A')}</b></div>
+      <div class="eq"><var>Z</var><sub>eq</sub> = <var>V</var> / <var>I<sub>T</sub></var> = ${polar(s.Zeq, 'Ω')}</div>`);
+  }
+  const P = TOPOS[st.topo].points;
+  out.push(`<h4>Potencial de cada punt</h4>
+    <p>Prenem el punt <b>E</b> (born negatiu de la font) com a referència, 0 V:</p>
+    ${Object.keys(P).map(k => `<div class="eq"><var>V</var><sub>${k}</sub> = ${binom(sol.pot[k], 'V')}</div>`).join('')}`);
+  if (!m.same) {
+    let h = `<h4>La mesura entre ${m.X} i ${m.Y}</h4>
+      <div class="eq">${vsub(m.X, m.Y)} = <var>V</var><sub>${m.X}</sub> − <var>V</var><sub>${m.Y}</sub> = ${binom(m.V, 'V')} = <b>${polar(m.V, 'V')}</b></div>`;
+    if (m.tram) h += `<div class="eq">${isub(m.X, m.Y)} = <b>${polar(m.tram.I, 'A')}</b></div>`;
+    if (m.dip) {
+      const sign = m.dip.p === m.X ? '' : ' (agafant el receptor de ' + m.dip.p + ' a ' + m.dip.q + ')';
+      h += `<p>Potència${sign}: <var>S</var> = <var>V</var>·<var>I</var>*</p>
+        <div class="eq"><var>S</var> = (${polar(m.dip.Vpq, 'V')}) · (${polar(conj(m.dip.Iin), 'A')}) = <b>${binom(m.dip.S, 'VA')}</b></div>
+        <p>La part real és la potència activa <var>P</var>, la imaginària la reactiva <var>Q</var>, i el mòdul la potència aparent <var>S</var>.</p>`;
+    }
+    h += `<p>El multímetre només mostra el <b>mòdul</b> (valor eficaç)${m.tram ? '' : ''}: ${q(mag(m.V), 'V')}${m.tram ? ' i ' + q(mag(m.tram.I), 'A') : ''}.</p>`;
+    out.push(h);
+  }
+  document.getElementById('steps').innerHTML = out.map(x => `<li>${x}</li>`).join('');
+}
+
+function renderPhasor(m) {
+  const g = document.getElementById('phasor'), cs = getComputedStyle(document.documentElement);
+  const col = n => cs.getPropertyValue(n).trim();
+  g.innerHTML = '';
+  svgEl('path', { class: 'ax', d: 'M-160 0H160M0 -160V160' }, g);
+  svgEl('text', { class: 'axl', x: 150, y: -5, 'text-anchor': 'end' }, g).textContent = 'Re';
+  svgEl('text', { class: 'axl', x: 5, y: -150 }, g).textContent = 'Im';
+  const Imeas = m.tram ? m.tram.I : m.dip ? m.dip.Iin : null;
+  const Vs = sol.Vs, IT = sol.IT, Vm = m.same ? null : m.V;
+  const vmax = Math.max(mag(Vs), Vm ? mag(Vm) : 0), imax = Math.max(mag(IT), Imeas ? mag(Imeas) : 0);
+  const items = [];
+  items.push({ z: Vs, s: 140 / vmax, c: col('--v'), lab: 'V', o: .35, dash: '' });
+  items.push({ z: IT, s: 120 / imax, c: col('--i'), lab: 'I_T', o: .35, dash: '5 4' });
+  if (Vm && mag(Vm) > 1e-9) items.push({ z: Vm, s: 140 / vmax, c: col('--v'), lab: `V_${m.X}${m.Y}`, o: 1, w: 3 });
+  if (Imeas && mag(Imeas) > 1e-12) items.push({ z: Imeas, s: 120 / imax, c: col('--i'), lab: m.tram ? `I_${m.X}→${m.Y}` : 'I', o: 1, w: 3 });
+  for (const it of items) {
+    const x = it.z.re * it.s, y = -it.z.im * it.s, L = Math.hypot(x, y);
+    if (L < 2) continue;
+    const ux = x / L, uy = y / L, hx = x - ux * 10, hy = y - uy * 10;
+    svgEl('path', { d: `M0 0L${hx} ${hy}`, stroke: it.c, 'stroke-width': it.w || 2, 'stroke-dasharray': it.dash || '', opacity: it.o, fill: 'none' }, g);
+    svgEl('path', { d: `M${x} ${y}L${hx - uy * 5} ${hy + ux * 5}L${hx + uy * 5} ${hy - ux * 5}Z`, fill: it.c, opacity: it.o }, g);
+    const sd = it.c === col('--i') ? 12 : -12;   // currents labelled on one side, voltages on the other
+    const t = svgEl('text', { class: 'vl', x: x + ux * 14 - uy * sd, y: y + uy * 14 + ux * sd + 4, fill: it.c, opacity: Math.max(it.o, .7), 'text-anchor': ux < -0.3 ? 'end' : ux > 0.3 ? 'start' : 'middle' }, g);
+    const [a, b] = it.lab.split('_');
+    t.textContent = a; if (b) { const ts = svgEl('tspan', { dy: 4, 'font-size': 10 }, t); ts.textContent = b; }
+  }
+  document.getElementById('phLegend').innerHTML =
+    `<span><i style="background:var(--v);opacity:.4"></i>tensió de la font</span><span><i style="background:var(--i);opacity:.4"></i>intensitat total</span>` +
+    (Vm ? `<span><i style="background:var(--v)"></i>tensió mesurada</span>` : '') + (Imeas ? `<span><i style="background:var(--i)"></i>intensitat mesurada</span>` : '');
+}
+
+function renderSummary() {
+  const s = sol, colr = { R: 'var(--r)', L: 'var(--l)', C: 'var(--c)' };
+  let h = `<thead><tr><th>Element</th><th>Impedància</th><th>Tensió</th><th>Intensitat</th><th>P</th><th>Q</th><th>S</th></tr></thead><tbody>`;
+  for (const k of ['R', 'L', 'C']) {
+    const e = s.el[k];
+    h += `<tr><td><span class="tagel" style="background:${colr[k]}">${k}</span>${valText(k)}</td><td>${polar(e.Z, 'Ω')}</td><td>${polar(e.V, 'V')}</td><td>${polar(e.I, 'A')}</td><td>${q(e.S.re, 'W')}</td><td>${q(e.S.im, 'var')}</td><td>${q(mag(e.S), 'VA')}</td></tr>`;
+  }
+  h += `<tr class="tot"><td>Total (font)</td><td>${polar(s.Zeq, 'Ω')}</td><td>${polar(s.Vs, 'V')}</td><td>${polar(s.IT, 'A')}</td><td>${q(s.ST.re, 'W')}</td><td>${q(s.ST.im, 'var')}</td><td>${q(mag(s.ST), 'VA')}</td></tr></tbody>`;
+  document.getElementById('sumTbl').innerHTML = h;
+  const phi = angDeg(s.Zeq), pf = Math.cos(phi * Math.PI / 180);
+  const kind = Math.abs(phi) < 0.05 ? 'resistiu (ressonància)' : phi > 0 ? 'inductiu: la intensitat va endarrerida' : 'capacitiu: la intensitat va avançada';
+  let f0 = '';
+  if (st.topo === 'mixt') { const L = st.L / 1000, C = st.C * 1e-6, x = 1 / (L * C) - (st.R / L) ** 2; f0 = x > 0 ? q(Math.sqrt(x) / (2 * Math.PI), 'Hz') : 'no n\'hi ha (R massa gran)'; }
+  else f0 = q(1 / (2 * Math.PI * Math.sqrt(st.L / 1000 * st.C * 1e-6)), 'Hz');
+  const sumS = ['R', 'L', 'C'].reduce((a, k) => a + mag(s.el[k].S), 0);
+  document.getElementById('badges').innerHTML = `
+    <span class="badge">Circuit <b>${kind}</b></span>
+    <span class="badge">φ = <b>${fx(phi, 2)}°</b></span>
+    <span class="badge">cos φ = <b>${fx(pf, 3)}</b></span>
+    <span class="badge">Freqüència de ressonància: <b>${f0}</b></span>
+    <span class="badge">Σ S dels elements = <b>${q(sumS, 'VA')}</b> ≠ S total</span>`;
+}
+
+/* ---------- theme ---------- */
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('mca-theme', root.dataset.theme); } catch (e) {}
+  update();
+});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => update());
+
+/* ---------- init ---------- */
+buildTopos(); buildDial(); buildLCD(); writeInputs(); drawSchematic(); fillSelects(); update();
+</script>
+</body>
+</html>
